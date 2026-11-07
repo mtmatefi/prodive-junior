@@ -73,11 +73,12 @@ p.sub{color:var(--mfg);font-size:16px;line-height:1.6;max-width:640px}
 .tile b{display:block;font-family:var(--head);font-size:16px;color:#fff}
 .tile span{font-size:13px;color:#C9D6E1}
 .tile i{position:absolute;top:10px;left:10px;font-style:normal;font-size:11px;font-weight:800;letter-spacing:.1em;background:var(--amber);color:#0D1A26;padding:4px 7px}
-.cast{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+.cast{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}
+.who.baruna{border-top:4px solid var(--cyan)}.wv{width:84px;height:84px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:52px;background:radial-gradient(circle,#0C3A52,transparent 70%)}
 .who{background:var(--card);border:1px solid var(--line);text-align:center;padding:16px 8px 14px}
 .who img{width:84px;height:84px;object-fit:contain}
 .who b{display:block;font-family:var(--head);color:#fff;margin-top:6px}
-.who span{font-size:12px;color:var(--mfg)}
+.who span{display:block;font-size:12px;line-height:1.45;color:var(--mfg);margin-top:4px;padding:0 4px}
 .steps{display:grid;gap:10px;margin-top:22px;counter-reset:s}
 .step{position:relative;background:var(--card);border:1px solid var(--line);padding:16px 16px 16px 70px}
 .step:before{counter-increment:s;content:counter(s);position:absolute;left:16px;top:14px;width:38px;height:38px;background:var(--amber);color:#0D1A26;font-family:var(--head);font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center}
@@ -97,6 +98,7 @@ footer img{height:16px;opacity:.85;display:block}
  .hero h1{font-size:64px}
  .kids{height:440px}.kids img{height:420px}.kids .k{height:340px}
  .gal{grid-template-columns:repeat(4,1fr)}
+ .cast{grid-template-columns:repeat(5,1fr)}
  .steps{grid-template-columns:repeat(4,1fr)}
  .step{padding:70px 16px 16px}.step:before{top:16px}
  .parents{grid-template-columns:repeat(2,1fr)}
@@ -144,7 +146,8 @@ footer img{height:16px;opacity:.85;display:block}
   <div class="wrap">
     <div class="eyebrow">Das Abenteuer</div>
     <h2>Das Riff braucht dich.</h2>
-    <p class="sub">Kakek, der alte Fischer, erzählt von früher: Das Riff vor dem Dorf war voller Leben. Heute liegt dort Müll. Kinder tauchen in echten 360°-Welten, lernen Meerestiere kennen und retten Schritt für Schritt ihr Riff. Jedes Wort wird vorgelesen und leuchtet mit, so üben Kinder ganz nebenbei lesen.</p>
+    <p class="sub">Ayu und Wayan leben in einem Dorf in Nord-Bali. Opa Ketut zeigt ihnen ein altes Foto von 1976: So bunt war das Riff vor dem Dorf früher, voller Fische, und nachts hat das Meer geleuchtet. Heute ist das Riff krank. Unter Wasser bittet eine Stimme um Hilfe: Baruna, der Herr des Meeres.</p>
+    <p class="sub" style="margin-top:12px">Dafür bringen die Kinder drei Lichter zum Leuchten, wie es auf Bali heisst: <b style="color:#fff">Tri Hita Karana</b>, die Harmonie mit der Natur, mit den Menschen und mit dem Göttlichen. Sie tauchen in echten 360°-Welten, lernen Meerestiere kennen und retten Schritt für Schritt ihr Riff. Jedes Wort wird vorgelesen und leuchtet mit, so üben Kinder ganz nebenbei lesen.</p>
     <div class="stats">
       <div class="stat"><b>360°</b><small>Tauchwelten</small></div>
       <div class="stat"><b>14</b><small>Mini-Spiele</small></div>
@@ -158,10 +161,10 @@ footer img{height:16px;opacity:.85;display:block}
     <div class="eyebrow">Missionen</div>
     <h2>Das erwartet dich</h2>
     <div class="gal">
-      <div class="tile"><img src="s2.jpg" alt="" loading="lazy"><i>MISSION 1</i><div><b>Strand putzen</b><span>Plastik sammeln und trennen</span></div></div>
-      <div class="tile"><img src="s4.jpg" alt="" loading="lazy"><i>MISSION 2</i><div><b>Nemo fotografieren</b><span>Unterwasser-Fotosafari</span></div></div>
-      <div class="tile"><img src="s3.jpg" alt="" loading="lazy"><i>MISSION 3</i><div><b>Mangroven pflanzen</b><span>Wurzeln schützen das Meer</span></div></div>
-      <div class="tile"><img src="s1.jpg" alt="" loading="lazy"><i>MISSION 4</i><div><b>Mantas treffen</b><span>Frei tauchen am Riff</span></div></div>
+      <div class="tile"><img src="s2.jpg" alt="" loading="lazy"><i>MISSION</i><div><b>Strand putzen</b><span>Plastik sammeln und trennen</span></div></div>
+      <div class="tile"><img src="s4.jpg" alt="" loading="lazy"><i>MISSION</i><div><b>Nemo fotografieren</b><span>Unterwasser-Fotosafari</span></div></div>
+      <div class="tile"><img src="s3.jpg" alt="" loading="lazy"><i>MISSION</i><div><b>Mangroven pflanzen</b><span>Wurzeln schützen das Meer</span></div></div>
+      <div class="tile"><img src="s1.jpg" alt="" loading="lazy"><i>MISSION</i><div><b>Mantas treffen</b><span>Frei tauchen am Riff</span></div></div>
     </div>
   </div>
 </section>
@@ -170,10 +173,13 @@ footer img{height:16px;opacity:.85;display:block}
   <div class="wrap">
     <div class="eyebrow">Deine Crew</div>
     <h2>Die Figuren</h2>
+    <p class="sub">Jede Figur spricht mit eigener Stimme, auf Deutsch, Englisch und Bahasa Indonesia.</p>
     <div class="cast">
-      <div class="who"><img src="face_ayu.png" alt=""><b>Ayu</b><span>mutige Taucherin</span></div>
-      <div class="who"><img src="face_wayan.png" alt=""><b>Wayan</b><span>neugieriger Entdecker</span></div>
-      <div class="who"><img src="face_kakek.png" alt=""><b>Kakek</b><span>weiser Fischer</span></div>
+      <div class="who"><img src="face_ayu.png" alt=""><b>Ayu</b><span>Kind aus dem Dorf in Nord-Bali. Du spielst Ayu oder Wayan.</span></div>
+      <div class="who"><img src="face_wayan.png" alt=""><b>Wayan</b><span>Kind aus dem Dorf. Zeigt dir seinen Strand.</span></div>
+      <div class="who"><img src="face_kakek.png" alt=""><b>Opa Ketut</b><span>Der Grossvater. Erzählt, wie bunt das Riff früher war.</span></div>
+      <div class="who"><img src="face_ibu.png" alt=""><b>Ibu Komang</b><span>Tauchlehrerin aus dem Dorf. Bringt den Kindern das Tauchen bei.</span></div>
+      <div class="who baruna"><div class="wv" aria-hidden="true">🌊</div><b>Baruna</b><span>Herr des Meeres. Man hört ihn nur unter Wasser.</span></div>
     </div>
   </div>
 </section>
