@@ -16,7 +16,9 @@ vc,vn,de,en,i,repo=sys.argv[1:]
 print(json.dumps({"versionCode":int(vc),"versionName":vn,"notes":{"de":de,"en":en,"id":i},
  "apk":f"https://github.com/{repo}/releases/download/v{vn}/ProDive-Junior.apk"},ensure_ascii=False))
 PY
-cp $APK /tmp/ProDive-Junior.apk
-gh release create "v$VN" /tmp/ProDive-Junior.apk /tmp/latest.json -R $REPO -t "Seaducation Junior $VN" -n "$NDE" --latest
+# GitHub-Release via Actions (Branch dist -> Workflow release.yml)
+D=/tmp/dist; rm -rf $D; git clone -q --depth 1 -b dist https://github.com/$REPO $D
+cp $APK $D/ProDive-Junior.apk; cp /tmp/latest.json $D/
+cd $D && git add -A && git -c user.name="Michael Matefi" -c user.email="mtmatefi@gmail.com" commit -qm "Release $VN" && git push -q origin dist
 echo "{\"vc\": $VC}" > $STATE
-echo "RELEASED $VN (versionCode $VC)"
+echo "RELEASED $VN (versionCode $VC) - GitHub Action erstellt das Release"
