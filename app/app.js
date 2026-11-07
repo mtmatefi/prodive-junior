@@ -763,75 +763,135 @@ function gameSpawn() { return new Promise((res) => { window.__mgDone = () => { m
 // 5b) Schale balancieren (Kapitel 4)
 const bowlCv = $('#bowl'), bowlCtx = bowlCv.getContext('2d');
 function gameBowl() { return new Promise((res) => {
-  // Kinderfreundlich + flüssig (7.11.): echte Zeit mit festen Physik-Schritten (kein Zeitlupen-Effekt auf langsamen Tablets),
-  // Wasser fliesst zur tiefen Seite (Schale wie echt: Wasser rechts -> nach links neigen), sanfte Wellen, Böen mit Vorwarnung,
-  // Wasserwaage + Pfeil zeigen, wohin man neigen muss. 3D dahinter in niedriger Auflösung, solange das Spiel läuft.
+  // ÜBERFAHRT v3 (7.11.): Wellen sind vorhersehbar (Wellen-Radar + Pfeil + Ansage), Schale in der Seitenansicht,
+  // Wasseroberfläche als Feder-Kette (Hoffman, "Make a Splash With Dynamic 2D Water Effects"), Überschwappen mit
+  // Tropfen-Partikeln und Spritzern. Feste Physik-Schritte nach echter Zeit: läuft auf langsamen Tablets gleich schnell.
   const prevPR = renderer.getPixelRatio(); renderer.setPixelRatio(1);
-  const end = (ok, delay) => { mgTick = null; camera.rotation.z = 0; renderer.setPixelRatio(prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
+  let done = false;
+  const end = (ok, delay) => { if (done) return; done = true; mgTick = null; camera.rotation.z = 0; renderer.setPixelRatio(prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
   window.__mgDone = () => end(true, 0);
   stage('boat', .5, .55, .92);
-  mgOpen('MINISPIEL · ÜBERFAHRT', 'Halt die Schale gerade. Nichts verschütten!', ICO_TILT + '<span>' + ctlTilt() + ', damit nichts überschwappt</span>');
-  const dpr = 1; bowlCv.width = W; bowlCv.height = H;
-  const DUR = 18, STEP = 1 / 60;
-  let s = 0, vs = 0, tin = 0, water = 1, prog = 0, gust = 0, gustT = 3, warn = 0, fail = false, tSim = 0, lastReal = performance.now(), acc = 0;
+  const INTRO = T('Gleich kommen Wellen von der Seite. Neige das Handy zur Welle hin, dann bleibt die Schale gerade!');
+  mgOpen('MINISPIEL · ÜBERFAHRT', INTRO, ICO_TILT + '<span>' + ctlTilt() + '</span>');
+  speak(INTRO);
+  bowlCv.width = W; bowlCv.height = H;
+  const STEP = 1 / 60, N = 34, INTRO_T = 5, DUR = 22;
+  // feste, lernbare Abfolge: erst kleine Wellen, abwechselnd links/rechts
+  const WAVES = [[3, 1, .6], [7, -1, .65], [10.5, 1, .8], [13.5, -1, .85], [16.5, 1, .95], [19, -1, 1]].map(([t, dir, A]) => ({ t, dir, A, dur: 1.8, said: false }));
+  const g = { t: -INTRO_T, tin: 0, th: 0, a: 0, va: 0, vol: 1, y: new Float32Array(N), v: new Float32Array(N), drops: [], rings: [], lastSpill: 0 };
+  window.__bowlG = g;
+  const bump = (u) => (u > 0 && u < 1 ? Math.sin(Math.PI * u) : 0);
+  const rollAt = (t) => Math.sin(t * .7) * .05 + WAVES.reduce((s, w) => s + w.dir * w.A * bump((t - w.t) / w.dur), 0);
   calib();
+  let lastReal = performance.now(), acc = 0;
   mgTick = () => {
-    const now = performance.now(); let real = Math.min(.25, (now - lastReal) / 1000); lastReal = now; acc += real;
-    const t = tilt();
-    while (acc >= STEP) { acc -= STEP; tSim += STEP;
-      tin += (t.x - tin) * (1 - Math.exp(-STEP * 14));            // schnelle, leicht geglättete Reaktion
-      gustT -= STEP; if (gustT < .9 && warn === 0) warn = 1;        // Vorwarnung kurz vor der Böe
-      if (gustT < 0) { gustT = 2.6 + Math.random() * 2.2; gust = (Math.random() < .5 ? -1 : 1) * (.8 + Math.random() * .45); warn = 0; }
-      gust *= Math.exp(-STEP * .9);
-      const roll = Math.sin(tSim * .8) * .38 + Math.sin(tSim * 2.1) * .12 + gust;
-      const force = (roll + tin * 1.15) * 2.4;                       // Neigung zählt etwas mehr als die Welle: immer korrigierbar
-      vs += (force - s * 2.4) * STEP * 3.2; vs *= Math.exp(-STEP * 3.2); s = clamp(s + vs * STEP, -1.5, 1.5);
-      if (Math.abs(s) > 1) water = Math.max(0, water - STEP * (Math.abs(s) - 1) * .9);
-      prog += STEP / DUR;
-    }
-    camera.rotation.z = (Math.sin(tSim * .8) * .3 + gust) * .05;
-    if (Math.abs(s) > 1 && Math.random() < real * 8) { blip(200, 120, .08, .05); buzz(8); }
-    mgBar(prog);
-    window.__bowlDbg = { s, water, prog };
-    drawBowl(s, water, dpr, warn ? Math.sign(gust || 1) : 0);
-    if (water < .3 && !fail) { fail = true; toast('Verschüttet! Nochmal.'); end(false, 2000); }
-    else if (prog >= 1 && !fail) { fail = true; chime(); end(true, 500); }
+    const now = performance.now(), real = Math.min(.25, (now - lastReal) / 1000); lastReal = now; acc += real;
+    const ti = tilt();
+    const geo = bowlGeo();
+    while (acc >= STEP) { acc -= STEP; g.t += STEP; stepBowl(g, ti.x, rollAt, geo, STEP); }
+    // Ansagen kurz vor jeder Welle
+    for (const w of WAVES) if (!w.said && g.t > w.t - 1.4) { w.said = true; blip(260, 160, .35, .06); speak(T(w.dir > 0 ? 'Welle von links!' : 'Welle von rechts!')); }
+    if (g.t < 0) mgBar(0); else mgBar(g.t / DUR);
+    camera.rotation.z = -rollAt(Math.max(0, g.t)) * .07;
+    drawBowl2(g, geo, WAVES, INTRO_T);
+    window.__bowlDbg = { s: g.th, water: g.vol, prog: g.t / DUR };
+    if (g.vol < .66) { toast(T('Verschüttet! Nochmal.')); end(false, 2200); }
+    else if (g.t >= DUR) { chime(); const st3 = g.vol > .9 ? 3 : g.vol > .8 ? 2 : 1; toast('⭐'.repeat(st3) + ' ' + T(st3 === 3 ? 'Super, fast nichts verschüttet!' : 'Geschafft!'), false); end(true, 1400); }
   };
 }); }
-function drawBowl(s, water, dpr, warnDir) {
-  const c = bowlCtx, w = bowlCv.width, h = bowlCv.height; c.clearRect(0, 0, w, h);
-  const cx = w / 2, cy = h * .74, R = Math.min(w * .36, 170 * dpr * Z);
-  c.save(); c.translate(cx, cy);
-  // shadow
-  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(0, R * .62, R * 1.05, R * .22, 0, 0, Math.PI * 2); c.fill();
-  // bowl body
-  let g = c.createLinearGradient(-R, 0, R, 0); g.addColorStop(0, '#5A3A20'); g.addColorStop(.5, '#A7743F'); g.addColorStop(1, '#4A2E18');
-  c.fillStyle = g; c.beginPath(); c.moveTo(-R, 0); c.bezierCurveTo(-R, R * .9, R, R * .9, R, 0); c.closePath(); c.fill();
-  // water surface (tilted ellipse)
-  const lvl = (1 - water) * R * .35;
-  c.save(); c.beginPath(); c.ellipse(0, 0, R * .96, R * .3, 0, 0, Math.PI * 2); c.clip();
-  g = c.createLinearGradient(0, -R * .3, 0, R * .3); g.addColorStop(0, '#5FC8E8'); g.addColorStop(1, '#1D6FA0');
-  c.fillStyle = '#3B2414'; c.fillRect(-R, -R, 2 * R, 2 * R);
-  c.translate(0, lvl); c.rotate(s * .22); c.fillStyle = g; c.beginPath(); c.ellipse(s * R * .25, 0, R * 1.05, R * .3, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-R * .3 + s * R * .2, -R * .08, R * .3, R * .05, 0, 0, Math.PI * 2); c.fill();
-  for (let i = 0; i < 14; i++) { const a = i * 2.39, rr = (i / 14) * R * .8; c.fillStyle = '#FF8FB8'; c.beginPath(); c.arc(Math.cos(a) * rr + s * R * .2, Math.sin(a) * rr * .26, 3.2 * dpr, 0, Math.PI * 2); c.fill(); }
+function bowlGeo() { const w = bowlCv.width, h = bowlCv.height, R = Math.min(w * .36, 200 * Z); return { w, h, cx: w / 2, cy: h * .64, R, D: R * .72, shell: R * .09 }; }
+function stepBowl(g, tiltX, rollAt, geo, dt) {
+  const play = g.t >= 0, N = g.y.length;
+  g.tin += (tiltX - g.tin) * (1 - Math.exp(-dt * 16));
+  const roll = play ? rollAt(g.t) : Math.sin(g.t * 2) * .12 * Math.max(0, Math.min(1, -g.t - 1)); // Intro: kleine Demo-Bewegung
+  const thT = (roll + g.tin * .8) * .5; // Kippwinkel der Schale (rad), max ~0.5
+  g.th += (thT - g.th) * (1 - Math.exp(-dt * 10));
+  // Wasser will waagrecht bleiben: in der Schale ist das eine Schräge -th, mit Trägheit (schwappt nach)
+  g.va += ((-Math.tan(g.th)) - g.a) * 38 * dt - g.va * 3.2 * dt; g.a += g.va * dt;
+  // Feder-Kette der Oberfläche (Höhe nach oben, in px)
+  const { R, D } = geo, inner = R - geo.shell, x0 = -inner * .96, dx = (inner * 1.92) / (N - 1);
+  for (let i = 0; i < N; i++) { const target = g.a * (x0 + i * dx); g.v[i] += ((target - g.y[i]) * 60 - g.v[i] * 4.5) * dt; }
+  for (let p = 0; p < 2; p++) for (let i = 0; i < N; i++) { const l = i > 0 ? g.y[i - 1] - g.y[i] : 0, r = i < N - 1 ? g.y[i + 1] - g.y[i] : 0; g.v[i] += (l + r) * 22 * dt; }
+  for (let i = 0; i < N; i++) g.y[i] += g.v[i] * dt;
+  // Überschwappen: Rand liegt dRest über der Ruhefläche
+  const dRest = D * (.19 + .45 * (1 - g.vol));
+  for (const [i, side] of [[0, -1], [N - 1, 1]]) {
+    const ex = g.y[i] - dRest;
+    if (ex > 0 && play) {
+      const loss = Math.min(ex, 30) / D * dt * 3.4; g.vol = Math.max(0, g.vol - loss); g.y[i] -= ex * .5; g.v[i] *= .5;
+      // Tropfen an der Lippe, in Weltkoordinaten
+      const c = Math.cos(g.th), s = Math.sin(g.th), lx = side * R * .99, ly = -geo.shell * .3;
+      const wx = geo.cx + lx * c - ly * s, wy = geo.cy + lx * s + ly * c;
+      const n = Math.min(4, 1 + ex / 6);
+      for (let k = 0; k < n; k++) if (g.drops.length < 160) g.drops.push({ x: wx, y: wy, vx: (side * c) * (60 + Math.random() * 80) * Z + g.va * 40 * side, vy: (side * s) * 80 * Z - (40 + Math.random() * 70) * Z, r: (2.5 + Math.random() * 3.5) * Z, life: 1 });
+      if (g.t - g.lastSpill > .25) { g.lastSpill = g.t; blip(320, 140, .12, .05); buzz(10); }
+    }
+  }
+  // Tropfen fallen, Spritzer am Deck
+  const floor = geo.cy + D + 40 * Z;
+  for (const d of g.drops) { d.vy += 1100 * Z * dt; d.x += d.vx * dt; d.y += d.vy * dt; if (d.y > floor) { d.life = 0; if (g.rings.length < 30) g.rings.push({ x: d.x, y: floor, r: 2 * Z, a: .7 }); } }
+  g.drops = g.drops.filter((d) => d.life > 0 && d.x > -50 && d.x < geo.w + 50);
+  for (const r of g.rings) { r.r += 60 * Z * dt; r.a -= 1.6 * dt; }
+  g.rings = g.rings.filter((r) => r.a > 0);
+}
+function drawCrest(c, x, y, s, face) { // kleine Wellenkrone, rollt in Richtung face (+1 = nach rechts)
+  c.save(); c.translate(x, y); c.scale(face, 1);
+  c.fillStyle = '#2E9CCB'; c.beginPath(); c.moveTo(-s * 1.2, 0); c.quadraticCurveTo(-s * .6, -s * .3, -s * .1, -s * 1.1); c.quadraticCurveTo(s * .6, -s * 1.5, s * .9, -s * .6); c.quadraticCurveTo(s * .45, -s * .85, s * .2, -s * .45); c.quadraticCurveTo(s * .55, -s * .1, s * 1.2, 0); c.closePath(); c.fill();
+  c.strokeStyle = '#E6FBFF'; c.lineWidth = Math.max(2, s * .18); c.lineCap = 'round'; c.beginPath(); c.moveTo(-s * .1, -s * 1.1); c.quadraticCurveTo(s * .6, -s * 1.5, s * .9, -s * .6); c.stroke();
+  c.restore(); }
+function drawBowl2(g, geo, WAVES, INTRO_T) {
+  const c = bowlCtx, { w, h, cx, cy, R, D, shell } = geo, N = g.y.length, inner = R - shell; c.clearRect(0, 0, w, h);
+  const dRest = D * (.19 + .45 * (1 - g.vol)), x0 = -inner * .96, dx = (inner * 1.92) / (N - 1);
+  // Schatten auf dem Deck
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(cx, cy + D + 34 * Z, R * 1.05, R * .12, 0, 0, Math.PI * 2); c.fill();
+  c.save(); c.translate(cx, cy); c.rotate(g.th);
+  const innerPath = () => { c.beginPath(); c.moveTo(-inner, -shell * .2); c.ellipse(0, -shell * .2, inner, D - shell * .8, 0, Math.PI, 0, true); c.closePath(); };
+  // Innenseite (dunkles Holz)
+  innerPath(); let gr = c.createLinearGradient(0, 0, 0, D); gr.addColorStop(0, '#3E2614'); gr.addColorStop(1, '#5C3A1E'); c.fillStyle = gr; c.fill();
+  // Wasser: Oberfläche aus der Feder-Kette, unten von der Schale abgeschnitten
+  c.save(); innerPath(); c.clip();
+  c.beginPath(); c.moveTo(x0 - shell, D * 2); c.lineTo(x0 - shell, dRest - g.y[0]);
+  for (let i = 0; i < N; i++) c.lineTo(x0 + i * dx, dRest - g.y[i]);
+  c.lineTo(-x0 + shell, dRest - g.y[N - 1]); c.lineTo(-x0 + shell, D * 2); c.closePath();
+  gr = c.createLinearGradient(0, dRest - D * .3, 0, D); gr.addColorStop(0, '#6FD6F2'); gr.addColorStop(.35, '#2E9CCB'); gr.addColorStop(1, '#155E8C'); c.fillStyle = gr; c.globalAlpha = .93; c.fill(); c.globalAlpha = 1;
+  // helle Oberflächenlinie + Glanz
+  c.lineWidth = 3 * Z; c.strokeStyle = 'rgba(220,250,255,.95)'; c.beginPath(); for (let i = 0; i < N; i++) { const X = x0 + i * dx, Y = dRest - g.y[i]; i ? c.lineTo(X, Y) : c.moveTo(X, Y); } c.stroke();
+  c.lineWidth = 6 * Z; c.strokeStyle = 'rgba(255,255,255,.18)'; c.stroke();
+  // Blüten schwimmen auf der Oberfläche
+  for (const [k, col] of [[6, '#FF8FB8'], [13, '#FFD84A'], [20, '#FFFFFF'], [27, '#FF8FB8']]) { const X = x0 + k * dx, Y = dRest - g.y[k], sl = Math.atan2(g.y[k - 1] - g.y[k + 1], 2 * dx); c.save(); c.translate(X, Y - 2 * Z); c.rotate(sl);
+    for (let p = 0; p < 5; p++) { c.fillStyle = col; c.beginPath(); c.ellipse(Math.cos(p * 1.257) * 5 * Z, Math.sin(p * 1.257) * 2.2 * Z, 5 * Z, 2.6 * Z, p * 1.257, 0, Math.PI * 2); c.fill(); }
+    c.fillStyle = '#F6B03A'; c.beginPath(); c.arc(0, 0, 2.4 * Z, 0, Math.PI * 2); c.fill(); c.restore(); }
   c.restore();
-  // rim
-  c.strokeStyle = '#C89156'; c.lineWidth = 8 * dpr; c.beginPath(); c.ellipse(0, 0, R, R * .31, 0, 0, Math.PI * 2); c.stroke();
-  // spill droplets
-  if (Math.abs(s) > 1) { c.fillStyle = 'rgba(120,210,240,.9)'; for (let i = 0; i < 6; i++) { const sx = Math.sign(s) * (R + Math.random() * 30 * dpr); c.beginPath(); c.arc(sx, Math.random() * R * .5, 4 * dpr, 0, Math.PI * 2); c.fill(); } }
+  // Schalenwand (Holz) als dicker U-Rand
+  c.beginPath(); c.moveTo(-R, -shell * .2); c.ellipse(0, -shell * .2, R, D, 0, Math.PI, 0, true); c.lineTo(inner, -shell * .2); c.ellipse(0, -shell * .2, inner, D - shell * .8, 0, 0, Math.PI, false); c.closePath();
+  gr = c.createLinearGradient(-R, 0, R, 0); gr.addColorStop(0, '#6B4423'); gr.addColorStop(.45, '#B9824A'); gr.addColorStop(1, '#5A381C'); c.fillStyle = gr; c.fill();
+  c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1.5 * Z; c.stroke();
+  for (const sx of [-1, 1]) { c.fillStyle = '#D19A5E'; c.beginPath(); c.ellipse(sx * (R - shell / 2), -shell * .2, shell * .62, shell * .36, 0, 0, Math.PI * 2); c.fill(); }
+  // Fuss
+  c.fillStyle = '#5A381C'; c.fillRect(-R * .28, D - shell * .3, R * .56, shell * 1.1);
   c.restore();
-  // Wasserwaage oben: Punkt muss in der Mitte bleiben; Pfeil zeigt, wohin neigen
-  { const lw = Math.min(w * .7, 360 * Z), lx = w / 2 - lw / 2, ly = h * .2, lh = 26 * Z;
-    c.fillStyle = 'rgba(11,31,58,.75)'; c.fillRect(lx, ly, lw, lh);
-    c.fillStyle = 'rgba(127,224,238,.35)'; c.fillRect(w / 2 - lw * .17, ly, lw * .34, lh);
-    const bx = w / 2 + clamp(s, -1.5, 1.5) / 1.5 * (lw / 2 - lh / 2);
-    c.fillStyle = Math.abs(s) > 1 ? '#FF8A5B' : (Math.abs(s) > .6 ? '#FFD84A' : '#7FE0EE'); c.beginPath(); c.arc(bx, ly + lh / 2, lh * .42, 0, Math.PI * 2); c.fill();
-    if (Math.abs(s) > .55) { const d = -Math.sign(s), ax = w / 2 + d * (lw / 2 + 34 * Z), ay = ly + lh / 2, sz = 22 * Z * (1 + .15 * Math.sin(performance.now() / 120));
-      c.fillStyle = '#FFD84A'; c.beginPath(); c.moveTo(ax + d * sz, ay); c.lineTo(ax - d * sz * .6, ay - sz * .8); c.lineTo(ax - d * sz * .6, ay + sz * .8); c.closePath(); c.fill(); }
-    if (warnDir) { c.fillStyle = 'rgba(255,216,74,.9)'; c.font = '800 ' + Math.round(20 * Z) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🌊 ' + T('Welle!'), w / 2, ly - 10 * Z); } }
-  // water meter
-  c.fillStyle = 'rgba(11,31,58,.8)'; const mx = w - 40 * dpr * Z, my = h * .3, mh = h * .3; c.fillRect(mx, my, 16 * dpr, mh); c.fillStyle = water > .5 ? '#7FE0EE' : '#FF8A5B'; c.fillRect(mx, my + mh * (1 - water), 16 * dpr, mh * water);
+  // Tropfen + Spritzer
+  c.fillStyle = 'rgba(140,220,245,.95)'; for (const d of g.drops) { c.beginPath(); c.ellipse(d.x, d.y, d.r, d.r * 1.35, Math.atan2(d.vy, d.vx) + Math.PI / 2, 0, Math.PI * 2); c.fill(); }
+  for (const r of g.rings) { c.strokeStyle = 'rgba(180,235,250,' + r.a + ')'; c.lineWidth = 2 * Z; c.beginPath(); c.ellipse(r.x, r.y, r.r, r.r * .3, 0, 0, Math.PI * 2); c.stroke(); }
+  // Wasserstand-Tropfen oben rechts
+  const mx = w - 46 * Z, my = h * .27, mh = h * .2; c.fillStyle = 'rgba(11,31,58,.75)'; c.fillRect(mx, my, 18 * Z, mh); c.fillStyle = g.vol > .6 ? '#7FE0EE' : '#FF8A5B'; const f = clamp((g.vol - .66) / .34, 0, 1); c.fillRect(mx, my + mh * (1 - f), 18 * Z, mh * f);
+  // Wellen-Radar: Boot in der Mitte, Wellen laufen von links/rechts darauf zu (4 s Vorschau)
+  const rw = Math.min(w * .78, 420 * Z), rx = w / 2 - rw / 2, ry = h * .19, rh = 34 * Z, ahead = 4;
+  c.fillStyle = 'rgba(11,31,58,.78)'; c.fillRect(rx, ry, rw, rh);
+  c.fillStyle = 'rgba(255,216,74,.25)'; c.fillRect(w / 2 - 16 * Z, ry, 32 * Z, rh);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; { const bx = w / 2, by = ry + rh * .62; c.fillStyle = '#C8874A'; c.beginPath(); c.moveTo(bx - 13 * Z, by); c.lineTo(bx + 13 * Z, by); c.lineTo(bx + 8 * Z, by + 6 * Z); c.lineTo(bx - 8 * Z, by + 6 * Z); c.closePath(); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.moveTo(bx, by - 2 * Z); c.lineTo(bx, by - 18 * Z); c.lineTo(bx + 10 * Z, by - 4 * Z); c.closePath(); c.fill(); }
+  let next = null;
+  for (const wv of WAVES) { const dtw = wv.t - g.t; if (dtw < -wv.dur || dtw > ahead) continue; if (dtw > -wv.dur * .5 && (!next || wv.t < next.t)) next = wv;
+    const k = clamp(dtw / ahead, 0, 1), x = w / 2 - wv.dir * (16 * Z + k * (rw / 2 - 30 * Z)); c.globalAlpha = dtw < 0 ? .45 : 1; drawCrest(c, x, ry + rh * .78, (10 + wv.A * 9) * Z, -wv.dir); c.globalAlpha = 1; }
+  // Anleitung: grosser Pfeil zur Welle hin, mit Countdown-Ring
+  const tip = (dir, txt, frac) => { const ax = clamp(w / 2 - dir * (R + 30 * Z), 72 * Z, w - 72 * Z), ay = cy - D * 1.05, s = 34 * Z * (1 + .1 * Math.sin(performance.now() / 110));
+    c.fillStyle = '#FFD84A'; c.beginPath(); c.moveTo(ax - dir * s, ay); c.lineTo(ax + dir * s * .7, ay - s * .85); c.lineTo(ax + dir * s * .7, ay + s * .85); c.closePath(); c.fill();
+    if (frac != null) { c.strokeStyle = '#FFD84A'; c.lineWidth = 4 * Z; c.beginPath(); c.arc(ax, ay, s * 1.5, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); c.stroke(); }
+    c.font = '800 ' + Math.round(19 * Z) + 'px system-ui'; c.fillStyle = '#fff'; c.textAlign = 'center'; c.lineWidth = 4 * Z; c.strokeStyle = 'rgba(11,31,58,.8)'; c.strokeText(txt, w / 2, ry + rh + 26 * Z); c.fillText(txt, w / 2, ry + rh + 26 * Z); };
+  if (g.t < 0) { const n = Math.ceil(-g.t); c.font = '900 ' + Math.round(70 * Z) + 'px system-ui'; c.fillStyle = '#fff'; c.textAlign = 'center'; if (-g.t < 3) c.fillText(String(n), w / 2, cy - D * 1.1);
+    tip(Math.sin(g.t * 2) > 0 ? 1 : -1, T('So geht’s: zur Welle hin neigen'), null); }
+  else if (next) { const dtw = next.t - g.t; if (dtw < 1.8) tip(next.dir, dtw > 0 ? T(next.dir > 0 ? '← Welle von links: nach links neigen!' : 'Welle von rechts: nach rechts neigen! →') : T('Halten… gleich vorbei'), dtw > 0 ? 1 - dtw / 1.8 : null); }
+  else if (Math.abs(g.th) > .14) tip(g.th > 0 ? 1 : -1, T('Schale gerade halten'), null);
 }
 
 // 6) Korallen pflanzen (Kapitel 5)
@@ -1387,23 +1447,71 @@ function gameMangrove() { mangTrees.forEach((m) => m.parent && m.parent.remove(m
   };
 }).finally(() => { st.lookBig = 0; }); }
 
-// D) Das leuchtende Meer: Bewegung lässt Plankton leuchten
-function gameGlow() { return new Promise((res) => { window.__mgDone = () => { mgTick = null; mgClose(); GLW.auto = 1; res(true); };
-  stage('glow', .14, .6, 1); glowStart();
-  mgOpen('MINISPIEL · DAS LEUCHTENDE MEER', sens.has ? 'Beweg das Handy. Das Plankton leuchtet!' : 'Wisch übers Wasser. Das Plankton leuchtet!', ICO_TILT + '<span>' + (sens.has ? 'Handy bewegen oder übers Wasser wischen' : 'Übers Wasser wischen') + '</span>');
-  let p = 0, last = null, done = false;
-  const toUV = (e) => { const r = phone.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-  const isWater = (x, y) => inPoly([x, y], WATER.map(([u, v]) => { const q = proj(gl, u, v, .45); return [q[0] * Z, q[1] * Z]; }));
-  const mv = (e) => { if (done) return; const [x, y] = toUV(e); if (last) { const d = Math.hypot(x - last[0], y - last[1]); if (isWater(x, y)) { glowAt(x, y, Math.min(14, 2 + d / 4), 18); p += d / 2600 * age().glow; } } last = [x, y]; };
-  const dn = (e) => { last = toUV(e); if (isWater(last[0], last[1])) { glowAt(last[0], last[1], 14, 22); p += .015; blip(900, 1400, .08, .04); } };
-  lay.addEventListener('pointerdown', dn); lay.addEventListener('pointermove', mv); lay.addEventListener('pointerup', () => last = null);
-  mgTick = (dt) => {
-    if (done) return;
-    if (sens.has && sens.motion) { const m = clamp((sens.rate - 12) / 110, 0, 1.6); if (m > 0) { const k = m * 70 * dt; for (let i = 0; i < k; i++) { const q = Math.random() < .55 ? randShore() : randWater(); glowUV(q[0], q[1], 3, 14); } p += m * dt / 9 * age().glow; if (Math.random() < m * dt * 6) blip(1000 + Math.random() * 600, 1300, .06, .03); } }
-    GLW.auto = p * .5; mgBar(p);
-    if (p >= 1) { done = true; GLW.auto = 1.6; chime(); buzz(80); setTimeout(() => { mgClose(); GLW.auto = 1; res(); }, 1800); }
+// D) Das leuchtende Meer v2 (7.11.): Im dunklen Wasser verstecken sich Tiere aus Leucht-Plankton.
+// Kinder fahren die Punkte mit dem Finger nach; ist ein Tier fertig, leuchtet es auf und schwimmt davon.
+// Echte Wellen laufen in festen Abständen an den Strand und leuchten beim Brechen blau (Biolumineszenz).
+const SILPTS = {};
+function silOutline(src, n) { if (SILPTS[src + n]) return Promise.resolve(SILPTS[src + n]); return new Promise((r) => { const im = new Image(); im.onload = () => {
+  const S = 96, cv = document.createElement('canvas'); cv.width = cv.height = S; const c = cv.getContext('2d'); const k = Math.min(S / im.width, S / im.height) * .92;
+  c.drawImage(im, (S - im.width * k) / 2, (S - im.height * k) / 2, im.width * k, im.height * k); const d = c.getImageData(0, 0, S, S).data, A = (x, y) => x >= 0 && y >= 0 && x < S && y < S && d[(y * S + x) * 4 + 3] > 110;
+  const edge = []; for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) if (A(x, y) && (!A(x + 1, y) || !A(x - 1, y) || !A(x, y + 1) || !A(x, y - 1))) edge.push([x / S - .5, y / S - .5]);
+  const pts = [edge[0]]; while (pts.length < n && edge.length) { let best = null, bd = -1; for (const e of edge) { let m = 9; for (const p of pts) m = Math.min(m, (e[0] - p[0]) ** 2 + (e[1] - p[1]) ** 2); if (m > bd) { bd = m; best = e; } } pts.push(best); }
+  // Reihenfolge entlang des Umrisses (nächster Nachbar), damit man sie in einem Zug nachfahren kann
+  const ord = [pts.shift()]; while (pts.length) { const l = ord[ord.length - 1]; let bi = 0, bd2 = 9; pts.forEach((p, i) => { const q = (p[0] - l[0]) ** 2 + (p[1] - l[1]) ** 2; if (q < bd2) { bd2 = q; bi = i; } }); ord.push(pts.splice(bi, 1)[0]); }
+  const tint = document.createElement('canvas'); tint.width = tint.height = S * 2; const tc = tint.getContext('2d'); tc.drawImage(im, (S * 2 - im.width * k * 2) / 2, (S * 2 - im.height * k * 2) / 2, im.width * k * 2, im.height * k * 2); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = '#7FF3FF'; tc.fillRect(0, 0, S * 2, S * 2);
+  SILPTS[src + n] = { pts: ord, img: tint }; r(SILPTS[src + n]); }; im.onerror = () => r({ pts: [], img: null }); im.src = src; }); }
+function gameGlow() { return new Promise(async (res) => {
+  let done = false;
+  const finish = () => { if (done) return; done = true; mgTick = null; st.lookLock = false; lay.onpointerdown = lay.onpointermove = lay.onpointerup = null; GLW.auto = 1.6; chime(); buzz(80); setTimeout(() => { mgClose(); GLW.auto = 1; res(true); }, 1600); };
+  window.__mgDone = finish;
+  stage('glow', .14, .6, 1); glowStart(); panoRecenter(); PV.tYaw = PV.base; PV.tPitch = PV.basePitch; st.lookLock = true; GLW.auto = .05;
+  const INTRO = T('Im Wasser verstecken sich Tiere aus Leucht-Plankton. Fahr die Punkte mit dem Finger nach!');
+  mgOpen('MINISPIEL · DAS LEUCHTENDE MEER', INTRO, '<span>' + T('Mit dem Finger die Punkte nachfahren') + '</span>'); speak(INTRO);
+  const nDots = st.age === 10 ? 22 : (st.age === 7 ? 18 : 14);
+  const LIST = [['assets/sil_clownfish.png', 'Clownfisch!', 'Nemo wohnt in einer Anemone.'], ['assets/sil_turtle.png', 'Schildkröte!', 'Meeresschildkröten werden über 80 Jahre alt.'], ['assets/sil_manta.png', 'Riffmanta!', 'Ein Manta ist so breit wie ein Auto.']];
+  const shapes = await Promise.all(LIST.map(([src]) => silOutline(src, nDots)));
+  bowlCv.width = W; bowlCv.height = H; const c = bowlCtx;
+  const cs = () => { const r = bowlCv.getBoundingClientRect(); return [r, bowlCv.width / r.width]; };
+  let idx = 0, dots = [], fly = null, lastP = null, total = 0;
+  const center = () => [bowlCv.width * .44, bowlCv.height * .6], size = () => Math.min(bowlCv.width * .62, 330 * Z);
+  const setup = () => { const [cx, cy] = center(), s = size(); dots = shapes[idx].pts.map(([x, y]) => ({ x: cx + x * s, y: cy + y * s, lit: 0 })); };
+  setup();
+  const touch = (x, y) => { const R = 30 * Z; let hit = false; for (const d of dots) if (!d.lit && Math.hypot(d.x - x, d.y - y) < R) { d.lit = performance.now(); hit = true; blip(700 + Math.random() * 500, 1300, .07, .05); buzz(6); }
+    if (hit) { const lit = dots.filter((d) => d.lit).length; mgBar((idx + lit / dots.length) / LIST.length);
+      if (lit >= dots.length - (st.age === 5 ? 2 : 1) && !fly) { dots.forEach((d) => d.lit = d.lit || performance.now()); const [nm, fact] = [T(LIST[idx][1]), T(LIST[idx][2])]; toast(nm + ' ' + fact); chime();
+        fly = { t: 0, img: shapes[idx].img }; } } };
+  const pos = (e) => { const [r, k] = cs(); return [(e.clientX - r.left) * k, (e.clientY - r.top) * k]; };
+  const sparkle = (e) => { const pr = phone.getBoundingClientRect(); glowAt(e.clientX - pr.left, e.clientY - pr.top, 3, 12); };
+  lay.onpointerdown = (e) => { lastP = pos(e); touch(...lastP); sparkle(e); };
+  lay.onpointermove = (e) => { if (!lastP) return; const p = pos(e); const steps = Math.ceil(Math.hypot(p[0] - lastP[0], p[1] - lastP[1]) / (10 * Z)); for (let i = 1; i <= steps; i++) touch(lastP[0] + (p[0] - lastP[0]) * i / steps, lastP[1] + (p[1] - lastP[1]) * i / steps); lastP = p; sparkle(e); };
+  lay.onpointerup = lay.onpointercancel = () => { lastP = null; };
+  let tw = 0; const PER = 5.2, waves = [0, PER / 3, PER * 2 / 3];
+  mgTick = (dt) => { if (done) return; tw += dt;
+    const w = bowlCv.width, h = bowlCv.height; c.clearRect(0, 0, w, h);
+    c.fillStyle = 'rgba(2,8,24,.42)'; c.fillRect(0, 0, w, h); // Nacht
+    // Wellen: Strandlinie aus dem Panorama, Wellen laufen von der offenen See darauf zu und brechen leuchtend
+    const shore = [[1.04, .55], [.86, .61], [.66, .7], [.48, .8], [.34, .9], [.24, 1.04]].map(([fx, fy]) => [fx * w, fy * h]); // Strandlinie im festen Blick
+    for (const off of waves) { const ph = ((tw + off) % PER) / PER; // 0..1
+      const app = Math.min(1, ph / .78), brk = ph > .78 ? (ph - .78) / .22 : 0, dist = (1 - app) ** 1.5 * w * .55 - brk * w * .03;
+      const P = shore.map(([x, y], i) => [x - dist * .78, y - dist * .62 + Math.sin(i * 1.7 + tw * 2) * 3 * Z]); c.beginPath(); c.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length - 1; i++) { const mx = (P[i][0] + P[i + 1][0]) / 2, my = (P[i][1] + P[i + 1][1]) / 2; c.quadraticCurveTo(P[i][0], P[i][1], mx, my); } c.lineTo(P[P.length - 1][0], P[P.length - 1][1]);
+      const a = brk ? (1 - brk) : app * app * .85; c.lineCap = 'round'; c.lineJoin = 'round';
+      c.strokeStyle = `rgba(90,220,255,${a * .28})`; c.lineWidth = (4 + app * 12 + brk * 30) * Z; c.stroke();
+      c.strokeStyle = `rgba(225,250,255,${a * (brk ? .95 : .55)})`; c.lineWidth = (2 + app * 3) * Z; c.stroke();
+      if (brk > 0 && brk < .5 && Math.random() < .6) { const [x, y] = shore[Math.floor(Math.random() * shore.length)]; const pr = phone.getBoundingClientRect(), [r, k] = cs(); glowAt((x / k) + r.left - pr.left, (y / k) + r.top - pr.top, 2, 26); } }
+    // Punkte
+    const now = performance.now(), next = dots.find((d) => !d.lit);
+    for (const d of dots) { if (d.lit) { const age2 = Math.min(1, (now - d.lit) / 300); c.fillStyle = `rgba(150,245,255,${.9})`; c.beginPath(); c.arc(d.x, d.y, (5 + 4 * (1 - age2)) * Z, 0, Math.PI * 2); c.fill(); c.fillStyle = 'rgba(80,220,255,.25)'; c.beginPath(); c.arc(d.x, d.y, 13 * Z, 0, Math.PI * 2); c.fill(); }
+      else { const pul = .5 + .5 * Math.sin(now / 300 + d.x); c.fillStyle = `rgba(120,200,255,${.35 + .3 * pul})`; c.beginPath(); c.arc(d.x, d.y, (3.5 + pul * 1.5) * Z, 0, Math.PI * 2); c.fill(); } }
+    // Linien zwischen benachbarten leuchtenden Punkten
+    c.strokeStyle = 'rgba(150,245,255,.55)'; c.lineWidth = 2.5 * Z; c.beginPath(); for (let i = 0; i < dots.length; i++) { const a = dots[i], b = dots[(i + 1) % dots.length]; if (a.lit && b.lit && Math.hypot(a.x - b.x, a.y - b.y) < size() * .3) { c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); } } c.stroke();
+    if (next && !fly) { const r = (16 + 6 * Math.sin(now / 160)) * Z; c.strokeStyle = 'rgba(255,216,74,.9)'; c.lineWidth = 3 * Z; c.beginPath(); c.arc(next.x, next.y, r, 0, Math.PI * 2); c.stroke(); }
+    // fertiges Tier leuchtet auf und schwimmt davon
+    if (fly) { fly.t += dt; const [cx, cy] = center(), s = size(), t = fly.t; const al = t < .6 ? t / .6 : Math.max(0, 1 - (t - 1.8) / 1.2);
+      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha = al * .55; const dx = Math.max(0, t - 1.5) * w * .35; c.drawImage(fly.img, cx - s / 2 - dx, cy - s / 2 - Math.sin(t * 3) * 6 * Z, s, s); c.restore();
+      if (t > 1.2) { c.globalAlpha = Math.max(0, 1 - (t - 1.2) / .6); } if (t > 3) { c.globalAlpha = 1; fly = null; idx++; if (idx >= LIST.length) return finish(); setup(); $('#mgTxt').textContent = T('Super! Da versteckt sich noch ein Tier.'); speak($('#mgTxt').textContent); } c.globalAlpha = 1; }
   };
-}); }
+  window.__glowDbg = () => ({ shore: SHORE.map(([u, v]) => proj(gl, u, v, .45).map((q) => Math.round(q * Z))), cw: bowlCv.width, done, idx, pts: dots.filter((d) => !d.lit).map((d) => { const [r, k] = cs(); const pr = phone.getBoundingClientRect(); return [d.x / k + r.left - pr.left, d.y / k + r.top - pr.top]; }) });
+}).finally(() => { st.lookLock = false; bowlCtx.clearRect(0, 0, 9999, 9999); }); }
 
 // ================= 360°: story locations become panoramas =================
 function toPano(o, file, opts = {}) { const p = scenePano(o.name, file, opts);
