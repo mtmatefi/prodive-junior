@@ -137,7 +137,7 @@ footer{text-align:center;font-size:13px;color:var(--mfg);padding:28px 0 calc(28p
 </div>
 <footer>© 2026 <a href="https://prodive.app">ProDive</a> · Digitales Tauchabenteuer</footer>
 <script>
-fetch('https://github.com/mtmatefi/prodive-junior/releases/latest/download/latest.json').then(r=>r.json()).then(j=>{document.getElementById('ver').textContent='Version '+j.versionName}).catch(()=>{});
+fetch('https://raw.githubusercontent.com/mtmatefi/prodive-junior/dist/latest.json').then(r=>r.json()).then(j=>{document.getElementById('ver').textContent='Version '+j.versionName}).catch(()=>{});
 if(!/Android/i.test(navigator.userAgent)&&matchMedia('(pointer:fine)').matches)document.getElementById('qr').classList.add('show');
 </script>
 </body>
