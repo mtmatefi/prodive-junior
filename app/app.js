@@ -762,26 +762,43 @@ function gameSpawn() { return new Promise((res) => { window.__mgDone = () => { m
 
 // 5b) Schale balancieren (Kapitel 4)
 const bowlCv = $('#bowl'), bowlCtx = bowlCv.getContext('2d');
-function gameBowl() { return new Promise((res) => { window.__mgDone = () => { mgTick = null; mgClose(); camera.rotation.z = 0; res(true); };
+function gameBowl() { return new Promise((res) => {
+  // Kinderfreundlich + flüssig (7.11.): echte Zeit mit festen Physik-Schritten (kein Zeitlupen-Effekt auf langsamen Tablets),
+  // Wasser fliesst zur tiefen Seite (Schale wie echt: Wasser rechts -> nach links neigen), sanfte Wellen, Böen mit Vorwarnung,
+  // Wasserwaage + Pfeil zeigen, wohin man neigen muss. 3D dahinter in niedriger Auflösung, solange das Spiel läuft.
+  const prevPR = renderer.getPixelRatio(); renderer.setPixelRatio(1);
+  const end = (ok, delay) => { mgTick = null; camera.rotation.z = 0; renderer.setPixelRatio(prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
+  window.__mgDone = () => end(true, 0);
   stage('boat', .5, .55, .92);
   mgOpen('MINISPIEL · ÜBERFAHRT', 'Halt die Schale gerade. Nichts verschütten!', ICO_TILT + '<span>' + ctlTilt() + ', damit nichts überschwappt</span>');
-  const dpr = Math.min(2, window.devicePixelRatio || 1); bowlCv.width = W * dpr; bowlCv.height = H * dpr;
-  let s = 0, vs = 0, water = 1, prog = 0, gust = 0, gustT = 2, fail = false;
-  mgTick = (dt) => {
+  const dpr = 1; bowlCv.width = W; bowlCv.height = H;
+  const DUR = 18, STEP = 1 / 60;
+  let s = 0, vs = 0, tin = 0, water = 1, prog = 0, gust = 0, gustT = 3, warn = 0, fail = false, tSim = 0, lastReal = performance.now(), acc = 0;
+  calib();
+  mgTick = () => {
+    const now = performance.now(); let real = Math.min(.25, (now - lastReal) / 1000); lastReal = now; acc += real;
     const t = tilt();
-    gustT -= dt; if (gustT < 0) { gustT = 1.5 + Math.random() * 2; gust = (Math.random() - .5) * 2.4; }
-    gust *= Math.exp(-dt * .8);
-    const roll = Math.sin(clock * .9) * .55 + Math.sin(clock * 2.3) * .2 + gust;
-    camera.rotation.z = roll * .05;
-    const force = roll * 3.4 - t.x * 3.4; vs += (force - s * 2.2) * dt * 3; vs *= Math.exp(-dt * 1.6); s = clamp(s + vs * dt, -1.6, 1.6);
-    if (Math.abs(s) > 1) { water = Math.max(0, water - dt * .4 * (Math.abs(s) - .9) * 3); if (Math.random() < dt * 10) { blip(200, 120, .08, .05); buzz(8); } }
-    prog += dt / 22; mgBar(prog);
-    drawBowl(s, water, dpr);
-    if (water < .35 && !fail) { fail = true; mgTick = null; toast('Verschüttet! Nochmal.'); setTimeout(() => { camera.rotation.z = 0; mgClose(); res(false); }, 2200); }
-    if (prog >= 1) { mgTick = null; camera.rotation.z = 0; setTimeout(() => { mgClose(); res(true); }, 500); }
+    while (acc >= STEP) { acc -= STEP; tSim += STEP;
+      tin += (t.x - tin) * (1 - Math.exp(-STEP * 14));            // schnelle, leicht geglättete Reaktion
+      gustT -= STEP; if (gustT < .9 && warn === 0) warn = 1;        // Vorwarnung kurz vor der Böe
+      if (gustT < 0) { gustT = 2.6 + Math.random() * 2.2; gust = (Math.random() < .5 ? -1 : 1) * (.8 + Math.random() * .45); warn = 0; }
+      gust *= Math.exp(-STEP * .9);
+      const roll = Math.sin(tSim * .8) * .38 + Math.sin(tSim * 2.1) * .12 + gust;
+      const force = (roll + tin * 1.15) * 2.4;                       // Neigung zählt etwas mehr als die Welle: immer korrigierbar
+      vs += (force - s * 2.4) * STEP * 3.2; vs *= Math.exp(-STEP * 3.2); s = clamp(s + vs * STEP, -1.5, 1.5);
+      if (Math.abs(s) > 1) water = Math.max(0, water - STEP * (Math.abs(s) - 1) * .9);
+      prog += STEP / DUR;
+    }
+    camera.rotation.z = (Math.sin(tSim * .8) * .3 + gust) * .05;
+    if (Math.abs(s) > 1 && Math.random() < real * 8) { blip(200, 120, .08, .05); buzz(8); }
+    mgBar(prog);
+    window.__bowlDbg = { s, water, prog };
+    drawBowl(s, water, dpr, warn ? Math.sign(gust || 1) : 0);
+    if (water < .3 && !fail) { fail = true; toast('Verschüttet! Nochmal.'); end(false, 2000); }
+    else if (prog >= 1 && !fail) { fail = true; chime(); end(true, 500); }
   };
 }); }
-function drawBowl(s, water, dpr) {
+function drawBowl(s, water, dpr, warnDir) {
   const c = bowlCtx, w = bowlCv.width, h = bowlCv.height; c.clearRect(0, 0, w, h);
   const cx = w / 2, cy = h * .74, R = Math.min(w * .36, 170 * dpr * Z);
   c.save(); c.translate(cx, cy);
@@ -797,13 +814,22 @@ function drawBowl(s, water, dpr) {
   c.fillStyle = '#3B2414'; c.fillRect(-R, -R, 2 * R, 2 * R);
   c.translate(0, lvl); c.rotate(s * .22); c.fillStyle = g; c.beginPath(); c.ellipse(s * R * .25, 0, R * 1.05, R * .3, 0, 0, Math.PI * 2); c.fill();
   c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath(); c.ellipse(-R * .3 + s * R * .2, -R * .08, R * .3, R * .05, 0, 0, Math.PI * 2); c.fill();
-  for (let i = 0; i < 26; i++) { const a = i * 2.39, rr = (i / 26) * R * .8; c.fillStyle = '#FF8FB8'; c.beginPath(); c.arc(Math.cos(a) * rr + s * R * .2, Math.sin(a) * rr * .26, 3.2 * dpr, 0, Math.PI * 2); c.fill(); }
+  for (let i = 0; i < 14; i++) { const a = i * 2.39, rr = (i / 14) * R * .8; c.fillStyle = '#FF8FB8'; c.beginPath(); c.arc(Math.cos(a) * rr + s * R * .2, Math.sin(a) * rr * .26, 3.2 * dpr, 0, Math.PI * 2); c.fill(); }
   c.restore();
   // rim
   c.strokeStyle = '#C89156'; c.lineWidth = 8 * dpr; c.beginPath(); c.ellipse(0, 0, R, R * .31, 0, 0, Math.PI * 2); c.stroke();
   // spill droplets
   if (Math.abs(s) > 1) { c.fillStyle = 'rgba(120,210,240,.9)'; for (let i = 0; i < 6; i++) { const sx = Math.sign(s) * (R + Math.random() * 30 * dpr); c.beginPath(); c.arc(sx, Math.random() * R * .5, 4 * dpr, 0, Math.PI * 2); c.fill(); } }
   c.restore();
+  // Wasserwaage oben: Punkt muss in der Mitte bleiben; Pfeil zeigt, wohin neigen
+  { const lw = Math.min(w * .7, 360 * Z), lx = w / 2 - lw / 2, ly = h * .2, lh = 26 * Z;
+    c.fillStyle = 'rgba(11,31,58,.75)'; c.fillRect(lx, ly, lw, lh);
+    c.fillStyle = 'rgba(127,224,238,.35)'; c.fillRect(w / 2 - lw * .17, ly, lw * .34, lh);
+    const bx = w / 2 + clamp(s, -1.5, 1.5) / 1.5 * (lw / 2 - lh / 2);
+    c.fillStyle = Math.abs(s) > 1 ? '#FF8A5B' : (Math.abs(s) > .6 ? '#FFD84A' : '#7FE0EE'); c.beginPath(); c.arc(bx, ly + lh / 2, lh * .42, 0, Math.PI * 2); c.fill();
+    if (Math.abs(s) > .55) { const d = -Math.sign(s), ax = w / 2 + d * (lw / 2 + 34 * Z), ay = ly + lh / 2, sz = 22 * Z * (1 + .15 * Math.sin(performance.now() / 120));
+      c.fillStyle = '#FFD84A'; c.beginPath(); c.moveTo(ax + d * sz, ay); c.lineTo(ax - d * sz * .6, ay - sz * .8); c.lineTo(ax - d * sz * .6, ay + sz * .8); c.closePath(); c.fill(); }
+    if (warnDir) { c.fillStyle = 'rgba(255,216,74,.9)'; c.font = '800 ' + Math.round(20 * Z) + 'px system-ui'; c.textAlign = 'center'; c.fillText('🌊 ' + T('Welle!'), w / 2, ly - 10 * Z); } }
   // water meter
   c.fillStyle = 'rgba(11,31,58,.8)'; const mx = w - 40 * dpr * Z, my = h * .3, mh = h * .3; c.fillRect(mx, my, 16 * dpr, mh); c.fillStyle = water > .5 ? '#7FE0EE' : '#FF8A5B'; c.fillRect(mx, my + mh * (1 - water), 16 * dpr, mh * water);
 }

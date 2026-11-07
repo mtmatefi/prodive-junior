@@ -52,7 +52,8 @@ STY={'kakek':'warm, calm, slow and gentle old Balinese grandfather telling a sto
 LANGN={'de':'German','en':'English','id':'Indonesian (Bahasa Indonesia)'}
 ROT=['gemini-3.8-flash-tts','gemini-3.8-flash-lite-tts','gemini-3.1-flash-tts-preview','gemini-2.5-flash-preview-tts']; dead=set()
 def fname(l,who,s): return f'{l}/{who[0]}3_{hashlib.md5(("v3|"+who+"|"+s).encode()).hexdigest()[:10]}.mp3'
-todo=[(k,s) for k,s in jobs.items() if not os.path.exists(OUT+'/'+fname(k[0],k[1],s))]
+PAUSED={'id'}  # Bahasa pausiert (Michi 7.11.2026)
+todo=[(k,s) for k,s in jobs.items() if k[0] not in PAUSED and not os.path.exists(OUT+'/'+fname(k[0],k[1],s))]
 LO={'de':0,'en':1,'id':2}
 todo.sort(key=lambda kv:(LO[kv[0][0]], 0 if kv[0] in story_keys else 1, kv[0][1]))
 print('jobs',len(jobs),'todo',len(todo),'story todo',sum(1 for k,_ in todo if k in story_keys),flush=True)
