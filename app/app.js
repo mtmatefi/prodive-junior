@@ -549,9 +549,14 @@ function frame(now) {
   if (kneel.visible && Math.random() < dt * .5) camBubbles.userData.emit(kneel.position.x, kneel.position.y + .3, kneel.position.z, 3, .04, clock);
   if (st.screen === 'explore' && coachStep < 0) { st.airT += dt; if (st.airT > 25) { st.airT = 0; st.air--; if (st.air <= 1) { say('Luft wird knapp! Wir holen kurz neue Luft.'); setTimeout(() => { st.air = 5; setAir(); bubbleBurst(18); }, 1600); } setAir(); } }
   if (typeof storyFrame === 'function') storyFrame(dt);
-  renderer.render(o.sc, camera);
+  perfTick(dt);
+  if (st.freeze3D) { if (!st.frozenDone) { renderer.render(o.sc, camera); st.frozenDone = true; } } else renderer.render(o.sc, camera);
   requestAnimationFrame(frame);
 }
+// Leistung: misst die Bildrate; bleibt sie unter ~35 fps, wird die 3D-Auflösung gesenkt (alte Tablets)
+let _pfN = 0, _pfS = 0; function perfTick(dt) { if (st.lite) return; _pfN++; _pfS += dt; if (_pfN >= 120) { if (_pfS / _pfN > 1 / 35) { st.lite = true; renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), .75)); } _pfN = 0; _pfS = 0; } }
+try { if ((navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)) { st.lite = true; renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), 1)); } } catch (e) {}
+function freeze3D(on) { st.freeze3D = on; st.frozenDone = false; if (!on) canvas.style.transform = ''; }
 function animExplore() {
   const a = clock * .12; place(turtle, ex, .76 + Math.sin(a) * .05, .45 + Math.sin(a * 1.7) * .02, .62); turtle.position.y += Math.sin(clock * .9) * .08; turtle.rotation.z = Math.sin(a * 1.7) * .08; turtle.scale.x = Math.cos(a) > 0 ? -1 : 1; setFog(turtle);
   place(wobbe, ex, .74, .8, .95); wobbe.position.x += Math.sin(clock * .2) * .03;
@@ -608,7 +613,13 @@ speak = function (text) { if (isNative()) { try { const C = window.Capacitor; C.
 const sens = { has: false, beta: 0, gamma: 0, alpha: 0, base: null, rate: 0, acc: 0, motion: false, fx: 0, fy: 0, fdown: false, fspeed: 0 };
 window.addEventListener('deviceorientation', (e) => { if (e.beta == null) return; sens.has = true; sens.alpha = e.alpha || 0; sens.beta = e.beta; sens.gamma = e.gamma; });
 window.addEventListener('devicemotion', (e) => { const r = e.rotationRate; if (r && r.alpha != null) { sens.motion = true; sens.rate = Math.hypot(r.alpha || 0, r.beta || 0, r.gamma || 0); } const a = e.acceleration; if (a && a.x != null) sens.acc = Math.hypot(a.x, a.y, a.z); });
-function calib() { sens.base = { b: sens.beta, g: sens.gamma }; sens.fx = sens.fy = 0; }
+// Schwerkraft-Neigung aus devicemotion: kommt auf alten Geräten viel öfter als deviceorientation (flüssiger)
+sens.gang = null; sens.gsign = 0; sens.gcorr = 0; sens.gbase = null; let _gPrevG = null, _gPrevA = null;
+window.addEventListener('devicemotion', (e) => { const g = e.accelerationIncludingGravity; if (!g || g.x == null) return; const ang = Math.atan2(g.x, Math.hypot(g.y || 0, g.z || 0)) * 180 / Math.PI; sens.gang = ang;
+  if (sens.has && _gPrevG != null && sens.gsign === 0) { const dG = sens.gamma - _gPrevG, dA = ang - _gPrevA; if (Math.abs(dG) > .4 && Math.abs(dA) > .4) sens.gcorr += Math.sign(dG * dA); if (Math.abs(sens.gcorr) > 6) sens.gsign = Math.sign(sens.gcorr); }
+  _gPrevG = sens.gamma; _gPrevA = ang; });
+function calib() { sens.base = { b: sens.beta, g: sens.gamma }; sens.fx = sens.fy = 0; sens.gbase = sens.gang; }
+function tiltX() { if (sens.has && sens.gsign && sens.gang != null) { if (sens.gbase == null) sens.gbase = sens.gang; return clamp(sens.gsign * (sens.gang - sens.gbase) / 22, -1, 1); } return tilt().x; }
 // finger fallback: drag on mini-game layer acts like tilting
 let fstart = null, flast = null;
 const mgEl = $('#mg');
@@ -766,11 +777,11 @@ function gameBowl() { return new Promise((res) => {
   // ÜBERFAHRT v3 (7.11.): Wellen sind vorhersehbar (Wellen-Radar + Pfeil + Ansage), Schale in der Seitenansicht,
   // Wasseroberfläche als Feder-Kette (Hoffman, "Make a Splash With Dynamic 2D Water Effects"), Überschwappen mit
   // Tropfen-Partikeln und Spritzern. Feste Physik-Schritte nach echter Zeit: läuft auf langsamen Tablets gleich schnell.
-  const prevPR = renderer.getPixelRatio(); renderer.setPixelRatio(1);
+  const prevPR = renderer.getPixelRatio();
   let done = false;
-  const end = (ok, delay) => { if (done) return; done = true; mgTick = null; camera.rotation.z = 0; renderer.setPixelRatio(prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
+  const end = (ok, delay) => { if (done) return; done = true; mgTick = null; camera.rotation.z = 0; freeze3D(false); renderer.setPixelRatio(st.lite ? Math.min(prevPR, .75) : prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
   window.__mgDone = () => end(true, 0);
-  stage('boat', .5, .55, .92);
+  stage('boat', .5, .55, .92); setTimeout(() => { if (!done && !window.__noFreeze) freeze3D(true); }, 400); // Hintergrund steht still: nur noch die Schale wird gezeichnet
   const INTRO = T('Gleich kommen Wellen von der Seite. Neige das Handy zur Welle hin, dann bleibt die Schale gerade!');
   mgOpen('MINISPIEL · ÜBERFAHRT', INTRO, ICO_TILT + '<span>' + ctlTilt() + '</span>');
   speak(INTRO);
@@ -786,13 +797,13 @@ function gameBowl() { return new Promise((res) => {
   let lastReal = performance.now(), acc = 0;
   mgTick = () => {
     const now = performance.now(), real = Math.min(.25, (now - lastReal) / 1000); lastReal = now; acc += real;
-    const ti = tilt();
+    const tx = tiltX();
     const geo = bowlGeo();
-    while (acc >= STEP) { acc -= STEP; g.t += STEP; stepBowl(g, ti.x, rollAt, geo, STEP); }
+    while (acc >= STEP) { acc -= STEP; g.t += STEP; stepBowl(g, tx, rollAt, geo, STEP); }
     // Ansagen kurz vor jeder Welle
     for (const w of WAVES) if (!w.said && g.t > w.t - 1.4) { w.said = true; blip(260, 160, .35, .06); speak(T(w.dir > 0 ? 'Welle von links!' : 'Welle von rechts!')); }
     if (g.t < 0) mgBar(0); else mgBar(g.t / DUR);
-    camera.rotation.z = -rollAt(Math.max(0, g.t)) * .07;
+    // Hintergrund steht still (alte Tablets): das Schaukeln sieht man an der Schale
     drawBowl2(g, geo, WAVES, INTRO_T);
     window.__bowlDbg = { s: g.th, water: g.vol, prog: g.t / DUR };
     if (g.vol < .66) { toast(T('Verschüttet! Nochmal.')); end(false, 2200); }
@@ -1462,9 +1473,9 @@ function silOutline(src, n) { if (SILPTS[src + n]) return Promise.resolve(SILPTS
   SILPTS[src + n] = { pts: ord, img: tint }; r(SILPTS[src + n]); }; im.onerror = () => r({ pts: [], img: null }); im.src = src; }); }
 function gameGlow() { return new Promise(async (res) => {
   let done = false;
-  const finish = () => { if (done) return; done = true; mgTick = null; st.lookLock = false; lay.onpointerdown = lay.onpointermove = lay.onpointerup = null; GLW.auto = 1.6; chime(); buzz(80); setTimeout(() => { mgClose(); GLW.auto = 1; res(true); }, 1600); };
+  const finish = () => { if (done) return; done = true; mgTick = null; st.lookLock = false; freeze3D(false); lay.onpointerdown = lay.onpointermove = lay.onpointerup = null; GLW.auto = 1.6; chime(); buzz(80); setTimeout(() => { mgClose(); GLW.auto = 1; res(true); }, 1600); };
   window.__mgDone = finish;
-  stage('glow', .14, .6, 1); glowStart(); panoRecenter(); PV.tYaw = PV.base; PV.tPitch = PV.basePitch; st.lookLock = true; GLW.auto = .05;
+  stage('glow', .14, .6, 1); glowStart(); panoRecenter(); PV.tYaw = PV.base; PV.tPitch = PV.basePitch; st.lookLock = true; GLW.auto = .05; setTimeout(() => { if (!done) freeze3D(true); }, 900);
   const INTRO = T('Im Wasser verstecken sich Tiere aus Leucht-Plankton. Fahr die Punkte mit dem Finger nach!');
   mgOpen('MINISPIEL · DAS LEUCHTENDE MEER', INTRO, '<span>' + T('Mit dem Finger die Punkte nachfahren') + '</span>'); speak(INTRO);
   const nDots = st.age === 10 ? 22 : (st.age === 7 ? 18 : 14);
@@ -1511,7 +1522,7 @@ function gameGlow() { return new Promise(async (res) => {
       if (t > 1.2) { c.globalAlpha = Math.max(0, 1 - (t - 1.2) / .6); } if (t > 3) { c.globalAlpha = 1; fly = null; idx++; if (idx >= LIST.length) return finish(); setup(); $('#mgTxt').textContent = T('Super! Da versteckt sich noch ein Tier.'); speak($('#mgTxt').textContent); } c.globalAlpha = 1; }
   };
   window.__glowDbg = () => ({ shore: SHORE.map(([u, v]) => proj(gl, u, v, .45).map((q) => Math.round(q * Z))), cw: bowlCv.width, done, idx, pts: dots.filter((d) => !d.lit).map((d) => { const [r, k] = cs(); const pr = phone.getBoundingClientRect(); return [d.x / k + r.left - pr.left, d.y / k + r.top - pr.top]; }) });
-}).finally(() => { st.lookLock = false; bowlCtx.clearRect(0, 0, 9999, 9999); }); }
+}).finally(() => { st.lookLock = false; freeze3D(false); bowlCtx.clearRect(0, 0, 9999, 9999); }); }
 
 // ================= 360°: story locations become panoramas =================
 function toPano(o, file, opts = {}) { const p = scenePano(o.name, file, opts);
@@ -1867,9 +1878,9 @@ async function playArcade(id) { const it = ARCADE.find((x) => x[0] === id); audi
   const score = Math.max(10, Math.round(30000 / Math.max(5, secs))); const best = bestGet(); const k = id + '_' + st.age; const nb = !best[k] || score > best[k]; if (nb) { best[k] = score; try { localStorage.setItem('seaju_best', JSON.stringify(best)); } catch (e) {} }
   lbSubmit(id, score); showScore(id, score, secs, nb); }
 function showScore(id, score, secs, nb) { const stars = score > 1800 ? 3 : score > 900 ? 2 : score > 0 ? 1 : 0;
-  scoreEl.innerHTML = `<span class="baloo" style="font-size:22px">${T(ARCADE.find((x) => x[0] === id)[1])}</span><div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><b>${score}</b><span style="font-weight:800">${Math.round(secs)} s${nb ? ' · ' + T('Neuer Rekord!') : ''}</span>
+  scoreEl.innerHTML = `<span class="baloo" style="font-size:22px">${T(ARCADE.find((x) => x[0] === id)[1])}</span><div class="stars">${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}</div><b>${score}</b><span style="font-weight:800">${score === 0 ? T('Diesmal hat es nicht geklappt. Versuch es nochmal!') : Math.round(secs) + ' s' + (nb ? ' · ' + T('Neuer Rekord!') : '')}</span>
     <button class="cta" id="scAgain" style="max-width:260px">${T('Nochmal')}</button><button class="ghost" id="scBack">${T('Zur Spielhalle')}</button>`;
-  scoreEl.classList.add('on'); if (nb) { chime(); buzz(60); } speak(nb ? 'Neuer Rekord!' : 'Gut gemacht!');
+  scoreEl.classList.add('on'); if (nb) { chime(); buzz(60); } speak(score === 0 ? T('Diesmal hat es nicht geklappt. Versuch es nochmal!') : (nb ? 'Neuer Rekord!' : 'Gut gemacht!'));
   $('#scAgain').onclick = () => { scoreEl.classList.remove('on'); playArcade(id); }; $('#scBack').onclick = () => { scoreEl.classList.remove('on'); show('map', 'map'); openArcade(); }; }
 function friendsPanel() { if (!st.friendsOn) { toast(T('Die Freunde-Funktion schalten Eltern im Elternbereich frei.')); return; }
   const fr = (() => { try { return JSON.parse(localStorage.getItem('seaju_fr') || '[]'); } catch (e) { return []; } })();
