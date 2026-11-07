@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ProDive Junior</string>
+    <string name="title_activity_main">ProDive Junior</string>
+    <string name="package_name">app.prodive.junior</string>
+    <string name="custom_url_scheme">app.prodive.junior</string>
+</resources>

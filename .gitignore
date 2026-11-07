@@ -1,0 +1,9 @@
+node_modules/
+native/android/app/build/
+native/android/build/
+native/android/.gradle/
+native/www/
+*.apk
+*.keystore
+.secrets/
+native/android/app/src/main/assets/public/

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ProDive Junior – Riffretter</title>
+<meta name="description" content="Mit Ayu & Wayan das Meer von Bali retten. Das Tauch-Abenteuer für Kinder – gratis für Android.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ProDive Junior – Riffretter 🐠">
+<meta property="og:description" content="Mit Ayu & Wayan das Meer von Bali retten. Gratis für Android.">
+<meta property="og:image" content="https://mtmatefi.github.io/prodive-junior/share.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://prodive.app/junior">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.png">
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(#0b3d6b,#06152b);color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 18px 40px;text-align:center}
+.hero{width:100%;max-width:560px;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px #0008}
+.hero img{width:100%;display:block}
+.tag{display:inline-block;background:#ffd84a;color:#0b1f3a;font-weight:800;padding:6px 14px;border-radius:99px;margin:22px 0 8px;letter-spacing:.06em}
+h1{font-size:44px;line-height:1.05}
+p.sub{color:#bff3fa;font-size:18px;margin:10px 0 24px}
+a.dl{display:block;width:100%;max-width:420px;background:#ff8a5b;color:#0b1f3a;font-weight:800;font-size:22px;text-decoration:none;padding:20px;border-radius:999px;box-shadow:0 6px 0 #c55a30}
+a.dl:active{transform:translateY(4px);box-shadow:0 2px 0 #c55a30}
+small{display:block;margin-top:10px;color:#9cc}
+.steps{max-width:420px;margin:30px auto 0;text-align:left;background:#ffffff12;border-radius:18px;padding:18px 20px}
+.steps h2{font-size:18px;margin-bottom:10px}
+.steps li{margin:8px 0 8px 18px;line-height:1.4}
+.ios{margin-top:22px;color:#9cc;font-size:14px;max-width:420px}
+footer{margin-top:36px;font-size:13px;color:#7aa}
+footer a{color:#bff3fa}
+</style>
+</head>
+<body>
+<div class="hero"><img src="share.jpg" alt="ProDive Junior – Riffretter"></div>
+<span class="tag">PRODIVE JUNIOR</span>
+<h1>Riffretter</h1>
+<p class="sub">Mit Ayu &amp; Wayan das Meer von Bali retten.<br>Für Kinder von 5–10 Jahren · Deutsch · English · Bahasa</p>
+<a class="dl" id="dl" href="https://github.com/mtmatefi/prodive-junior/releases/latest/download/ProDive-Junior.apk">⬇ Gratis für Android laden</a>
+<small id="ver">Neueste Version · ohne Werbung · ohne Konto</small>
+<div class="steps">
+<h2>So installierst du es</h2>
+<ol>
+<li>Auf den Knopf tippen, die Datei wird geladen.</li>
+<li>Download öffnen und auf <b>Installieren</b> tippen.</li>
+<li>Fragt das Handy nach „Unbekannte Apps“: <b>Zulassen</b> für den Browser.</li>
+<li>Fertig! Updates holt die App später selbst.</li>
+</ol>
+</div>
+<p class="ios">iPhone/iPad: noch nicht verfügbar.</p>
+<footer>Ein Projekt von <a href="https://prodive.app">ProDive</a> &amp; Ocean Pure 🌊</footer>
+<script>
+fetch('https://github.com/mtmatefi/prodive-junior/releases/latest/download/latest.json').then(r=>r.json()).then(j=>{document.getElementById('ver').textContent='Version '+j.versionName+' · ohne Werbung · ohne Konto'}).catch(()=>{});
+</script>
+</body>
+</html>

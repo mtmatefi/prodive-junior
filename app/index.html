@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>ProDive Junior – Riffretter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F3A;--aqua:#7FE0EE;--coral:#FF8A5B;--sun:#FFD84D;--ink:#0B1F3A}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#061426;overflow:hidden;font-family:'Nunito',sans-serif;color:var(--ink);user-select:none;-webkit-user-select:none;touch-action:none}
+#phone{position:fixed;inset:0;overflow:hidden;background:#0B3A5A}
+@media (min-width:700px) and (pointer:fine){#phone{inset:auto;left:50%;top:50%;width:390px;height:844px;transform:translate(-50%,-50%);border-radius:44px;box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 10px #10233d}}
+canvas#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.screen{pointer-events:none}.screen *{pointer-events:auto}.hint,.finger,.ring,.ringlbl,.say,.say *{pointer-events:none!important}
+#backDive{position:absolute;left:50%;transform:translateX(-50%);bottom:104px;height:56px;padding:0 22px;border-radius:28px;border:0;background:var(--coral);font-family:"Baloo 2";font-weight:800;font-size:20px;color:var(--ink);box-shadow:0 5px 0 #D9643A;z-index:6}
+.baloo{font-family:'Baloo 2',sans-serif;font-weight:800}
+button{font-family:inherit;cursor:pointer}
+.pill{white-space:nowrap;height:48px;padding:0 14px;border-radius:24px;background:rgba(11,31,58,.72);display:flex;align-items:center;gap:8px;color:#fff;border:0}
+.round{border-radius:50%;border:0;display:flex;align-items:center;justify-content:center}
+.ico{display:block}
+.thal{width:54px;height:54px;border-radius:27px;background:linear-gradient(160deg,#7FE0EE,#2F7FD0);border:3px solid #fff;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.bubble{background:#fff;border-radius:4px 20px 20px 20px;padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 18px rgba(11,31,58,.25);font-weight:800;font-size:16px;line-height:1.25}
+.speak{width:36px;height:36px;border-radius:18px;border:0;background:var(--sun);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cta{height:64px;border-radius:32px;background:var(--coral);color:var(--ink);border:0;display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:24px;box-shadow:0 6px 0 #D9643A;width:100%}
+.cta:active{transform:translateY(4px);box-shadow:0 2px 0 #D9643A}
+nav.tabs{position:absolute;left:0;right:0;bottom:0;height:88px;background:var(--navy);display:flex;justify-content:space-around;align-items:flex-start;padding-top:10px;z-index:5}
+nav.tabs button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;color:#BFD3E2;font-weight:800;font-size:13px;min-width:64px}
+nav.tabs button.act{color:var(--sun)}
+nav.tabs button svg{stroke:currentColor}
+.fade{position:absolute;inset:0;background:#0B3A5A;opacity:0;pointer-events:none;transition:opacity .45s;z-index:50}
+.fade.on{opacity:1}
+#bubbles{position:absolute;inset:0;pointer-events:none;z-index:51;overflow:hidden}
+#bubbles i{position:absolute;bottom:-40px;border-radius:50%;border:2px solid rgba(255,255,255,.85);background:rgba(255,255,255,.18);animation:rise 1.1s ease-in forwards}
+@keyframes rise{to{transform:translateY(-1000px) translateX(var(--dx));opacity:.2}}
+.toast{position:absolute;left:20px;right:20px;top:120px;z-index:60;display:flex;gap:10px;align-items:flex-start;opacity:0;transform:translateY(-10px);transition:.3s;pointer-events:none}
+.toast.on{opacity:1;transform:none}
+/* map */
+.marker{position:absolute;border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translate(-50%,-100%)}
+.mlabel{background:rgba(255,255,255,.92);border-radius:14px;padding:6px 12px;font-weight:800;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,.25);white-space:nowrap}
+.mdot{width:44px;height:44px;border-radius:22px;border:4px solid #fff;display:flex;align-items:center;justify-content:center}
+.marker.sel .mlabel{background:#fff;border:3px solid var(--sun)}
+.marker.sel .mdot{width:52px;height:52px;background:var(--sun)!important;box-shadow:0 0 0 8px rgba(255,216,77,.35);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 14px rgba(255,216,77,.15)}}
+.sheet{position:absolute;left:16px;right:16px;bottom:108px;background:rgba(255,255,255,.96);border-radius:28px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(11,31,58,.35)}
+/* explore */
+.hud{position:absolute;top:50px;left:16px;right:16px;display:flex;align-items:center;justify-content:space-between;z-index:4}
+.air span{width:18px;height:18px;border-radius:9px;background:#BFF3FA;border:2px solid #fff;transition:.4s}
+.air span.off{background:transparent;border-color:rgba(255,255,255,.6)}
+.count{height:48px;padding:0 14px;border-radius:24px;background:var(--sun);display:flex;align-items:center;gap:6px;color:var(--ink);font-family:'Baloo 2';font-weight:800;font-size:20px;border:0}
+.ring{position:absolute;width:70px;height:70px;margin:-35px 0 0 -35px;border-radius:50%;border:4px solid var(--sun);box-shadow:0 0 0 10px rgba(255,216,77,.3);pointer-events:none;animation:pulse 1.4s infinite;display:none;z-index:3}
+.ringlbl{position:absolute;transform:translate(-50%,0);background:var(--sun);border-radius:14px;padding:5px 10px;font-weight:800;font-size:14px;pointer-events:none;display:none;white-space:nowrap;z-index:3}
+.side{position:absolute;right:16px;bottom:150px;display:flex;flex-direction:column;gap:12px;z-index:4}
+.side button{width:64px;height:64px;border-radius:32px;border:3px solid #fff;background:rgba(11,31,58,.65)}
+.side button:active{background:rgba(11,31,58,.9)}
+.edge{position:absolute;top:50%;width:46px;height:84px;margin-top:-42px;border:0;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;z-index:4;animation:nudge 1.5s infinite}
+.edge.l{left:0;border-radius:0 42px 42px 0}.edge.r{right:0;border-radius:42px 0 0 42px}
+.edge[hidden]{display:none}
+@keyframes nudge{50%{opacity:.55}}
+.bottom{position:absolute;left:16px;right:16px;bottom:36px;display:flex;align-items:flex-end;justify-content:space-between;z-index:4}
+.lupe{width:96px;height:96px;border-radius:48px;background:var(--coral);border:5px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink);box-shadow:0 6px 0 #D9643A,0 10px 24px rgba(0,0,0,.3);font-weight:800;font-size:13px}
+.lupe:active{transform:translateY(4px)}
+.hint{position:absolute;left:44px;top:548px;background:rgba(255,255,255,.95);border-radius:18px;padding:8px 14px;font-weight:800;font-size:16px;box-shadow:0 6px 16px rgba(11,31,58,.3);z-index:4;transition:opacity .4s}
+.finger{position:absolute;left:150px;top:612px;z-index:4;pointer-events:none;transition:opacity .4s}
+.finger .r1{position:absolute;left:0;top:0;width:70px;height:70px;border-radius:35px;border:3px solid rgba(255,255,255,.9);background:rgba(255,255,255,.18);animation:tap 1.6s infinite}
+.finger .r2{position:absolute;left:18px;top:18px;width:34px;height:34px;border-radius:17px;background:rgba(255,255,255,.85)}
+.finger svg{position:absolute;left:26px;top:28px;animation:fing 1.6s infinite}
+@keyframes tap{0%{transform:scale(.6);opacity:0}30%{opacity:1}100%{transform:scale(1.2);opacity:0}}
+@keyframes fing{0%,100%{transform:translate(0,0)}30%{transform:translate(-4px,-6px)}}
+.say{position:absolute;left:100px;right:100px;bottom:146px;z-index:4;opacity:0;transition:.3s;pointer-events:none}
+.say.on{opacity:1}
+.say div{background:#fff;border-radius:20px 20px 20px 4px;padding:10px 14px;font-weight:800;font-size:15px;line-height:1.25;box-shadow:0 6px 16px rgba(11,31,58,.3)}
+/* card */
+#card{position:absolute;inset:0;z-index:20;display:none}
+.cardon #explore .hud,.cardon #explore .side,.cardon #explore .bottom,.cardon #explore .edge,.cardon .ring,.cardon .ringlbl,.cardon #mission .mpanel,.cardon #mission .hold,.cardon #mission .fact{opacity:0!important;pointer-events:none!important;transition:opacity .2s}
+#card .dim{position:absolute;inset:0;background:rgba(11,31,58,.25)}
+#card .panel{position:absolute;left:0;right:0;bottom:0;height:392px;background:#fff;border-radius:32px 32px 0 0;padding:0 20px 28px;display:flex;flex-direction:column;gap:14px;box-shadow:0 -10px 30px rgba(11,31,58,.3);transform:translateY(110%);transition:transform .45s cubic-bezier(.2,.9,.3,1.2)}
+#card.on .panel{transform:none}
+.facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.facts div{border-radius:18px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;font-weight:800;font-size:14px;line-height:1.2}
+.btn2{flex:1;height:60px;border-radius:30px;border:0;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'Baloo 2';font-weight:800;font-size:20px;color:var(--ink)}
+.badge{height:44px;padding:0 16px;border-radius:22px;background:var(--sun);display:flex;align-items:center;gap:8px;font-family:'Baloo 2';font-weight:800;font-size:20px;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.star{animation:spin 1.4s ease-out}
+@keyframes spin{from{transform:scale(0) rotate(-180deg)}to{transform:none}}
+/* mission */
+.mpanel{position:absolute;top:max(14px,env(safe-area-inset-top));left:16px;right:16px;background:rgba(11,31,58,.8);border-radius:24px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;color:#fff;z-index:4}
+.meter{flex:1;height:14px;border-radius:7px;background:rgba(255,255,255,.2);overflow:hidden}
+.meter i{display:block;height:14px;border-radius:7px;background:linear-gradient(90deg,#7FE0EE,#BFF3FA);width:0}
+.hold{position:absolute;left:20px;bottom:44px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:4}
+.holdbtn{width:132px;height:132px;border-radius:66px;border:0;background:transparent;position:relative;padding:0;touch-action:none}
+.holdbtn .core{position:absolute;left:22px;top:22px;width:88px;height:88px;border-radius:44px;background:#fff;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.holdbtn.down .core{transform:scale(.9);background:#FFF6CC}
+.fact{position:absolute;left:196px;top:296px;background:rgba(255,255,255,.95);border-radius:16px;padding:8px 12px;font-weight:800;font-size:14px;line-height:1.25;max-width:170px;box-shadow:0 6px 16px rgba(0,0,0,.25);z-index:4;transition:opacity .5s}
+.win{position:absolute;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(11,31,58,.45)}
+.win.on{display:flex}
+.win .box{background:#fff;border-radius:28px;padding:22px;margin:24px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;animation:spin .6s ease-out}
+/* album */
+#album{background:linear-gradient(180deg,#2F8FC0 0%,#12507E 45%,#0B1F3A 100%);color:#fff}
+.tabsrow{display:flex;gap:8px}
+.tabsrow button{height:44px;padding:0 16px;border-radius:22px;border:2px solid rgba(255,255,255,.5);background:transparent;color:#fff;font-weight:800;font-size:15px}
+.tabsrow button.act{background:#fff;color:var(--ink);border-color:#fff}
+.grid{position:absolute;top:236px;left:16px;right:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tile{border:0;padding:6px 6px 8px;border-radius:22px;display:flex;flex-direction:column;align-items:center;gap:4px;position:relative}
+.tile img{width:100%;aspect-ratio:1;border-radius:16px;object-fit:cover}
+.tile span{font-weight:800;font-size:13px;line-height:1.15;text-align:center;min-height:30px;display:flex;align-items:center}
+.tile .neu{position:absolute;top:-6px;right:-4px;background:var(--coral);color:var(--ink);border-radius:10px;padding:2px 8px;font-weight:800;font-size:12px;border:2px solid #fff;min-height:0}
+.tile.pop{animation:spin .7s ease-out}
+/* station */
+.scard{position:absolute;top:max(14px,env(safe-area-inset-top));left:16px;right:16px;background:rgba(255,255,255,.95);border-radius:24px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:4}
+.care{position:absolute;left:16px;top:360px;display:flex;flex-direction:column;gap:12px;z-index:4}
+.care button{width:84px;height:84px;border-radius:26px;border:3px solid #fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:800;font-size:13px;color:var(--ink);position:relative}
+.care button.done::after{content:'';position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:11px;background:#3FBF7F;border:3px solid #fff}
+.plant{position:absolute;left:16px;right:16px;bottom:104px;background:rgba(11,31,58,.9);border-radius:24px;padding:14px;display:flex;align-items:center;gap:12px;color:#fff;z-index:4}
+.modal{position:absolute;inset:0;z-index:40;background:rgba(11,31,58,.6);display:none;align-items:center;justify-content:center}
+.modal.on{display:flex}
+.modal .box{background:#fff;border-radius:28px;padding:22px;margin:20px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.opts{display:flex;gap:10px;justify-content:center}
+.opts button{width:72px;height:64px;border-radius:20px;border:0;background:#E6F7FA;font-family:'Baloo 2';font-weight:800;font-size:28px;color:var(--ink)}
+
+.screen,#card,.toast,.modal,#coach{zoom:var(--z,1)}
+.marker,.marker *{color:var(--ink)}
+button{color:var(--ink)}
+.hud{top:max(14px,env(safe-area-inset-top))}
+.quest{position:absolute;top:calc(max(14px,env(safe-area-inset-top)) + 58px);left:16px;right:16px;min-height:52px;border-radius:26px;background:rgba(255,255,255,.95);display:flex;align-items:center;gap:10px;padding:6px 8px 6px 6px;box-shadow:0 6px 16px rgba(11,31,58,.3);z-index:4;border:0;text-align:left}
+.quest img{width:40px;height:40px;border-radius:20px;background:#E6F7FA;object-fit:contain;flex-shrink:0}
+.quest .qt{flex:1;display:flex;flex-direction:column;line-height:1.15}
+.quest .qt b{font-size:12px;letter-spacing:1px;color:#1F6FA8}
+.quest .qt span{font-weight:800;font-size:15px}
+.quest .dir{min-width:52px;height:40px;border-radius:20px;background:var(--sun);display:flex;align-items:center;justify-content:center;gap:2px;font-weight:800;font-size:13px;padding:0 8px;animation:nudge 1.2s infinite}
+.edge{top:38%!important;height:auto!important;margin-top:0!important;padding:12px 4px;flex-direction:column;gap:4px;width:64px!important;background:rgba(11,31,58,.62)!important;color:#fff;font-weight:800;font-size:11px;line-height:1.1;text-align:center}
+.edge.l{border-radius:0 24px 24px 0!important}.edge.r{border-radius:24px 0 0 24px!important}
+.edge span{color:#fff;max-width:58px}
+.side{bottom:136px!important;align-items:center;gap:8px!important}
+.gauge{width:56px;border-radius:18px;background:rgba(11,31,58,.62);padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge i{font-style:normal;font-weight:800;font-size:12px;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:4px}
+.gauge i::before{content:'';width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,.4)}
+.gauge i.on{color:#fff;font-size:14px}.gauge i.on::before{background:var(--sun);width:12px;height:12px;border-radius:6px}
+.say{left:16px!important;right:110px!important;bottom:122px!important}
+.say div{border-radius:20px 20px 20px 4px}
+#coach{position:absolute;inset:0;z-index:70;display:none}
+#coach.on{display:block}
+#coach .spot{position:absolute;border-radius:40px;box-shadow:0 0 0 2000px rgba(11,31,58,.72);transition:all .35s;pointer-events:none;border:3px solid var(--sun)}
+#coach .cbox{position:absolute;left:20px;right:20px;background:#fff;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+#coach .cbox p{margin:0;font-weight:800;font-size:18px;line-height:1.3}
+#coach .cbox .row{display:flex;justify-content:space-between;align-items:center}
+#coach .dots{display:flex;gap:6px}#coach .dots i{width:10px;height:10px;border-radius:5px;background:#D6E3EA}#coach .dots i.on{background:var(--coral)}
+#backDive{position:absolute!important;top:12px!important;right:16px!important;left:auto!important;bottom:auto!important;transform:none!important;height:42px!important;font-size:16px!important;white-space:nowrap;padding:0 16px!important;box-shadow:0 4px 0 #D9643A!important}
+.sheet{bottom:100px!important;padding:12px 14px!important;gap:10px!important}
+.sheet .cta{height:56px;font-size:22px}
+
+#title,#dlg,#chap,#mg,#cert,#arui{zoom:var(--z,1)}
+#title{position:absolute;inset:0;z-index:80;background:url(assets/bg_beach.jpg) center/cover;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 24px 60px;gap:14px}
+#title::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,31,58,.55) 0%,rgba(11,31,58,0) 35%,rgba(11,31,58,0) 55%,rgba(11,31,58,.75) 100%)}
+#title>*{position:relative}
+#title .logo{position:absolute;top:60px;left:0;right:0;text-align:center;color:#fff}
+#title .logo b{font-family:'Baloo 2';font-weight:800;font-size:46px;line-height:1;display:block;text-shadow:0 4px 20px rgba(0,0,0,.35)}
+#title .logo .pdj{display:inline-block;font-style:normal;font-weight:800;font-size:12px;letter-spacing:3px;color:#0B1F3A;background:#FFD84A;border-radius:10px;padding:3px 10px;margin-bottom:6px}
+#title .logo span{font-weight:800;font-size:15px;letter-spacing:2px;color:#BFF3FA}
+#title img.w{width:200px;filter:drop-shadow(0 10px 20px rgba(0,0,0,.4));animation:bob 3s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+.ghost{background:rgba(255,255,255,.18);color:#fff;border:2px solid rgba(255,255,255,.7);height:48px;border-radius:24px;padding:0 18px;font-weight:800;font-size:15px}
+#dlg{position:absolute;inset:0;z-index:60;display:none}
+#dlg.on{display:block}
+#dlg .dbox{position:absolute;left:14px;right:14px;bottom:24px;background:#fff;border-radius:26px;padding:16px 16px 14px 16px;box-shadow:0 12px 30px rgba(11,31,58,.4);display:flex;flex-direction:column;gap:10px;animation:spin .35s ease-out}
+#dlg .who{display:flex;align-items:center;gap:10px;margin-top:-52px}
+#dlg .por{width:84px;height:84px;border-radius:42px;border:4px solid #fff;background:#BFF3FA;box-shadow:0 6px 16px rgba(0,0,0,.25);overflow:hidden;flex-shrink:0;display:flex;align-items:flex-start;justify-content:center}
+#dlg .por img{width:100%;margin-top:4px}
+#dlg .who b{font-family:'Baloo 2';font-weight:800;font-size:20px;background:var(--sun);padding:2px 12px;border-radius:14px;margin-top:30px}
+#dlg p{margin:0;font-weight:800;font-size:18px;line-height:1.35;color:#0B1F3A}
+#dlg .drow{display:flex;justify-content:space-between;align-items:center}
+#dlg .fact{position:static;max-width:none;background:#E6F7FA;box-shadow:none;font-size:14px;color:#1F6FA8;display:none}
+#chap{position:absolute;inset:0;z-index:75;display:none;align-items:center;justify-content:center;background:rgba(11,31,58,.82)}
+#chap.on{display:flex}
+#chap .box{margin:24px;text-align:center;color:#fff;display:flex;flex-direction:column;gap:14px;align-items:center;animation:spin .5s ease-out}
+#chap .num{font-weight:800;letter-spacing:3px;color:#FFB08F;font-size:15px}
+#chap .t{font-family:'Baloo 2';font-weight:800;font-size:38px;line-height:1.05}
+#chap .g{background:rgba(255,255,255,.12);border-radius:20px;padding:12px 16px;font-weight:700;font-size:16px;line-height:1.35;color:#DCEBF4;max-width:320px}
+#mg{position:absolute;inset:0;z-index:15;display:none}
+#mg.on{display:block}
+#mg .mgtop{position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;background:rgba(11,31,58,.82);border-radius:22px;padding:12px 14px;color:#fff;display:flex;flex-direction:column;gap:6px;z-index:3}
+#mg .mgtop b{font-weight:800;font-size:12px;letter-spacing:1.5px;color:#FFB08F}
+#mg .mgtop span{font-weight:800;font-size:17px;line-height:1.25}
+#mg .meter{flex:none;height:12px}
+#mgLayer{position:absolute;inset:0}
+#mgLayer img,#mgLayer .o{position:absolute;transform:translate(-50%,-50%);touch-action:none}
+.mgctl{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;background:rgba(255,255,255,.92);border-radius:18px;padding:8px 14px;font-weight:800;font-size:14px;white-space:nowrap;display:flex;gap:8px;align-items:center;z-index:3}
+.mgbtn{position:absolute;right:16px;bottom:20px;z-index:4}
+.spotl{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;background:radial-gradient(circle,rgba(255,250,200,.85) 0%,rgba(255,240,170,.45) 35%,rgba(255,240,170,0) 70%);mix-blend-mode:screen;pointer-events:none}
+.ptarget{position:absolute;width:86px;height:86px;margin:-43px 0 0 -43px;border-radius:50%;border:4px dashed rgba(255,255,255,.9);pointer-events:none}
+.ptarget i{position:absolute;inset:6px;border-radius:50%;background:conic-gradient(var(--sun) var(--p,0%),transparent 0)}
+.ptarget.ok{border-style:solid;border-color:#3FBF7F}
+.vf{position:absolute;left:50%;top:50%;width:220px;height:170px;margin:-85px 0 0 -110px;border-radius:18px;pointer-events:none}
+.vf::before,.vf::after{content:'';position:absolute;inset:0;border:5px solid #fff;border-radius:18px;clip-path:polygon(0 0,30% 0,30% 6px,6px 6px,6px 30%,0 30%,0 70%,6px 70%,6px calc(100% - 6px),30% calc(100% - 6px),30% 100%,70% 100%,70% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 70%,100% 70%,100% 30%,calc(100% - 6px) 30%,calc(100% - 6px) 6px,70% 6px,70% 0,100% 0,100% 100%,0 100%)}
+.vf.hot::before{border-color:var(--sun)}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .4s;z-index:5}
+.flash.on{opacity:.9;transition:none}
+.photos{position:absolute;left:14px;bottom:80px;display:flex;gap:8px;z-index:3}
+.photos img{width:64px;height:64px;border-radius:10px;border:4px solid #fff;object-fit:cover;box-shadow:0 4px 12px rgba(0,0,0,.3);position:static!important;transform:rotate(-4deg)!important;animation:spin .4s}
+.bundle{width:12px;height:12px;border-radius:6px;background:radial-gradient(circle at 35% 35%,#fff,#FF9EC0 45%,#FF6F9C);box-shadow:0 0 10px #FF9EC0}
+#bowl{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#cert{position:absolute;inset:0;z-index:78;display:none;align-items:center;justify-content:center;background:rgba(11,31,58,.7)}
+#cert.on{display:flex}
+#cert .box{margin:20px;background:#FFFCF2;border-radius:28px;padding:24px 20px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;border:6px double #C9A54A;animation:spin .6s}
+#arv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#123}
+#arui{position:absolute;inset:0;z-index:16;display:none}
+#arui.on{display:block}
+.storyc{display:flex;flex-direction:column;gap:2px}
+.storyc b{font-size:12px;letter-spacing:1.5px;color:#C4502A}
+.linkb{border:0;background:none;font-weight:800;font-size:14px;color:#1F6FA8;text-decoration:underline;padding:4px 0;align-self:center}
+#loading{position:absolute;inset:0;z-index:100;background:#0B3A5A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#fff;transition:opacity .6s}
+#loading .bar{width:200px;height:10px;border-radius:5px;background:rgba(255,255,255,.2);overflow:hidden}
+#loading .bar i{display:block;height:10px;background:var(--sun);width:0;transition:width .2s}
+</style>
+</head>
+<body>
+<div id="phone">
+<video id="arv" playsinline muted autoplay></video>
+<canvas id="gl"></canvas>
+
+<!-- MAP -->
+<section class="screen" id="map">
+ <div style="position:absolute;left:0;right:0;top:0;height:200px;background:linear-gradient(180deg,rgba(11,31,58,.55),rgba(11,31,58,0));pointer-events:none"></div>
+ <div style="position:absolute;top:max(16px,env(safe-area-inset-top));left:20px;right:20px;display:flex;align-items:center;justify-content:space-between">
+  <div style="display:flex;flex-direction:column"><span class="baloo" style="font-size:30px;line-height:1;color:#fff">Riffretter</span><span style="font-weight:800;font-size:13px;letter-spacing:2px;color:#BFF3FA">BALI · INDONESIEN</span></div>
+  <div style="display:flex;gap:8px"><button class="round" id="arBtn" aria-label="AR: Riff im Zimmer" style="width:48px;height:48px;background:var(--sun);font-weight:800;font-size:14px">AR</button><button class="round" data-act="parents" aria-label="Einstellungen für Eltern" style="width:48px;height:48px;background:rgba(255,255,255,.9)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></div>
+ </div>
+ <div style="position:absolute;top:calc(max(16px,env(safe-area-inset-top)) + 70px);left:20px;right:20px;display:flex;gap:10px;align-items:flex-start">
+  <div class="thal"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 14c2-4 5-6 8-6s6 2 8 6"/><circle cx="9" cy="12" r="1" fill="#fff"/><circle cx="15" cy="12" r="1" fill="#fff"/><path d="M9.5 16c1.5 1 3.5 1 5 0"/></svg></div>
+  <div class="bubble"><span id="mapSay">Wohin tauchen wir heute?</span><button class="speak" data-speak="#mapSay" aria-label="Vorlesen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></button></div>
+ </div>
+ <button class="marker" data-site="kri" style="left:96px;top:322px"><span class="mlabel" style="background:rgba(11,31,58,.78);color:#fff">Tulamben · Wrack</span><span class="mdot" style="background:#5B6B80"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span></button>
+ <button class="marker" data-site="manta" style="left:272px;top:396px"><span class="mlabel">Manta Point · 10 m</span><span class="mdot" style="background:#7FE0EE"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10c4 0 6-3 10-3s6 3 10 3c-3 2-6 3-8 6l-2 4-2-4c-2-3-5-4-8-6z"/></svg></span></button>
+ <button class="marker sel" data-site="arborek" style="left:178px;top:552px"><span class="mlabel">Amed-Riff · 0–10 m</span><span class="mdot" style="background:#FFD84D"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round"><path d="M3 12c3-4 6-5 9-5 2 0 4 1 6 3l3-2v8l-3-2c-2 2-4 3-6 3-3 0-6-1-9-5z"/><circle cx="8" cy="11" r=".8" fill="#0B1F3A"/></svg></span></button>
+ <div class="sheet">
+  <div class="storyc" id="storyC"><b id="scNum">KAPITEL 1</b><span class="baloo" id="scT" style="font-size:22px;line-height:1.05"></span></div>
+  <button class="cta" id="storyGo"><svg width="24" height="24" viewBox="0 0 24 24" fill="#0B1F3A"><path d="M7 4l13 8-13 8z"/></svg><span>Weiterspielen</span></button>
+  <div id="freeRow" style="display:flex;align-items:center;justify-content:space-between">
+   <div style="display:flex;flex-direction:column"><span class="baloo" id="siteName" style="font-size:24px;line-height:1.05">Amed-Riff</span><span id="siteSub" style="font-weight:700;font-size:14px;color:#3D5470">Schnorcheln · 27–30 °C</span></div>
+   <div id="dots" style="display:flex;gap:4px"></div>
+  </div>
+  <button class="ghost" id="goDive" style="color:#0B1F3A;border-color:#0B1F3A;background:#fff;height:44px"><span id="goLbl">Frei tauchen</span></button>
+ </div>
+</section>
+
+<!-- EXPLORE -->
+<section class="screen" id="explore">
+ <div class="hud">
+  <div class="pill"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7FE0EE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14M7 13l5 5 5-5"/></svg><span class="baloo" style="font-size:22px" id="depth">6 m</span></div>
+  <div class="pill air" id="air"><span></span><span></span><span></span><span></span><span></span></div>
+  <button class="count" data-act="album"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12c3-4 6-5 9-5 2 0 4 1 6 3l3-2v8l-3-2c-2 2-4 3-6 3-3 0-6-1-9-5z"/></svg><span class="cnt">3/15</span></button>
+ </div>
+ <button class="quest" id="quest"><img id="qImg" alt=""><span class="qt"><b id="qNum">AUFGABE 1/6</b><span id="qTxt"></span></span><span class="dir" id="qDir"></span></button>
+ <div class="ring" id="ring"></div><div class="ringlbl" id="ringlbl">Neues Tier!</div>
+ <button class="edge l" id="edgeL" aria-label="Nach links schwimmen"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg><span id="edgeLt"></span></button>
+ <button class="edge r" id="edgeR" aria-label="Nach rechts schwimmen"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg><span id="edgeRt"></span></button>
+ <div class="side" id="side">
+  <button id="up" aria-label="Höher schwimmen"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+  <div class="gauge" id="gauge"><i>2 m</i><i class="on">6 m</i><i>10 m</i></div>
+  <button id="down" aria-label="Tiefer tauchen"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></button>
+ </div>
+ <div class="say" id="say"><div id="sayTxt"></div></div>
+ <div class="bottom">
+  <button class="round" id="thalBtn" aria-label="Thalassa fragen" style="width:72px;height:72px;border:4px solid #fff;background:linear-gradient(160deg,#7FE0EE,#2F7FD0);box-shadow:0 6px 16px rgba(0,0,0,.3)"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 14c2-4 5-6 8-6s6 2 8 6"/><circle cx="9" cy="12" r="1" fill="#fff"/><circle cx="15" cy="12" r="1" fill="#fff"/><path d="M9.5 16c1.5 1 3.5 1 5 0"/></svg></button>
+  <button class="lupe" id="lupe"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>Entdecken</button>
+  <button class="round" data-act="surface" aria-label="Auftauchen zur Karte" style="width:72px;height:72px;border:4px solid #fff;background:rgba(11,31,58,.7);flex-direction:column;color:#fff;font-weight:800;font-size:11px;gap:0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7FE0EE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg><span style="color:#fff">Karte</span></button>
+ </div>
+</section>
+
+<!-- CARD -->
+<section id="card">
+ <div class="dim"></div>
+ <div style="position:absolute;top:50px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center">
+  <div class="badge"><svg class="star" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>Entdeckt!</div>
+  <button class="round" data-act="closecard" aria-label="Schliessen" style="width:48px;height:48px;background:rgba(255,255,255,.92)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+ </div>
+ <div class="panel">
+  <div style="display:flex;gap:14px;align-items:flex-end;margin-top:-44px">
+   <img id="cImg" alt="" style="width:104px;height:104px;border-radius:24px;border:5px solid #fff;box-shadow:0 8px 20px rgba(11,31,58,.3);object-fit:cover;background:#fff">
+   <div style="display:flex;flex-direction:column;padding-bottom:4px"><span class="baloo" id="cName" style="font-size:30px;line-height:1"></span><span id="cLat" style="font-weight:700;font-size:14px;color:#3D5470;font-style:italic"></span></div>
+  </div>
+  <div class="facts" id="cFacts"></div>
+  <div id="cSay" style="background:#F2F6F9;border-radius:18px;padding:12px 14px;font-weight:700;font-size:15px;line-height:1.35;color:#24384F"></div>
+  <div style="display:flex;gap:12px;margin-top:auto">
+   <button class="btn2" id="cSpeak" style="background:var(--sun);box-shadow:0 5px 0 #D9B22A"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg>Vorlesen</button>
+   <button class="btn2" data-act="toalbum" style="background:var(--coral);box-shadow:0 5px 0 #D9643A">Ins Album <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>
+ </div>
+</section>
+
+<!-- MISSION -->
+<section class="screen" id="mission">
+ <div class="mpanel">
+  <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-weight:800;font-size:12px;letter-spacing:1.2px;color:#FFB08F;white-space:nowrap">MISSION · MANTA POINT · 10 M</span>
+   <div style="display:flex;gap:6px"><button class="speak" data-speak="#mTxt" aria-label="Mission vorlesen"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg></button><button class="speak" data-act="surface" aria-label="Zur Karte" style="background:rgba(255,255,255,.9)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+  <span class="baloo" style="font-size:26px;line-height:1.05">Die Putzstation</span>
+  <span id="mTxt" style="font-weight:700;font-size:15px;line-height:1.3;color:#DCEBF4">Kleine Putzerfische säubern die Mantas. Sei ganz still, dann kommen sie näher!</span>
+  <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:800;font-size:13px;color:#BFF3FA">Ruhe</span><div class="meter"><i id="calm"></i></div><span style="font-weight:800;font-size:13px;color:#BFF3FA" id="mcount">0/3 Mantas</span></div>
+ </div>
+ <div class="fact" id="mfact" style="top:250px">Riffmantas werden bis 5 m breit!</div>
+ <div class="hold"><div style="background:rgba(255,255,255,.95);border-radius:16px;padding:8px 12px;font-weight:800;font-size:15px">Gedrückt halten</div>
+  <button class="holdbtn" id="hold" aria-label="Gedrückt halten, um still zu sein"><svg style="position:absolute;left:0;top:0" width="132" height="132" viewBox="0 0 132 132"><circle cx="66" cy="66" r="60" fill="rgba(11,31,58,0.55)" stroke="rgba(255,255,255,0.35)" stroke-width="10"/><circle id="holdArc" cx="66" cy="66" r="60" fill="none" stroke="#FFD84D" stroke-width="10" stroke-linecap="round" stroke-dasharray="0 377" transform="rotate(-90 66 66)"/></svg><span class="core"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V5.5a1.5 1.5 0 0 1 3 0V14c0 4-3 7-6.5 7S5 18.5 5 15v-2a1.5 1.5 0 0 1 3 0"/></svg></span></button>
+ </div>
+ <div class="win" id="mwin"><div class="box"><img src="assets/st_manta.jpg" alt="" style="width:110px;height:110px;border-radius:24px"><span class="baloo" style="font-size:28px;line-height:1">Geschafft!</span><span style="font-weight:700;font-size:16px;color:#3D5470;max-width:260px">Weil du so still warst, haben dich drei Riffmantas besucht. Der Riffmanta ist jetzt in deinem Album!</span><button class="cta" data-act="mantacard" style="height:56px;font-size:20px">Mehr erfahren</button></div></div>
+</section>
+
+<!-- ALBUM -->
+<section class="screen" id="album">
+ <div style="position:absolute;top:62px;left:20px;right:20px;display:flex;flex-direction:column;gap:12px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between"><div style="display:flex;flex-direction:column"><span style="font-weight:800;font-size:13px;letter-spacing:2px;color:#BFF3FA">BALI</span><span class="baloo" style="font-size:32px;line-height:1">Mein Riff-Album</span></div><span class="baloo cnt" style="font-size:28px;color:#FFD84D">3/15</span></div>
+  <div style="height:14px;border-radius:7px;background:rgba(255,255,255,.2);overflow:hidden"><div id="abar" style="height:14px;border-radius:7px;background:#FFD84D;width:20%;transition:width .6s"></div></div>
+  <div class="tabsrow" id="atabs"><button class="act" data-f="all">Alle</button><button data-f="fisch">Fische</button><button data-f="koralle">Korallen</button><button data-f="riese">Riesen</button></div>
+ </div>
+ <div class="grid" id="grid"></div>
+ <button id="backDive" style="display:none">Weiter tauchen</button>
+</section>
+
+<!-- STATION -->
+<section class="screen" id="station">
+ <div class="scard"><div style="display:flex;justify-content:space-between;align-items:center"><span class="baloo" style="font-size:24px;line-height:1">Meine Koralle wächst</span><span id="day" style="background:#E6F7FA;border-radius:12px;padding:4px 10px;font-weight:800;font-size:14px;color:#1F6FA8">Tag 12</span></div>
+  <div style="height:14px;border-radius:7px;background:#E3EBF0;overflow:hidden"><div id="grow" style="width:18%;height:14px;border-radius:7px;background:linear-gradient(90deg,#FF8A5B,#FFD84D);transition:width .8s"></div></div>
+  <span id="stTxt" style="font-weight:700;font-size:14px;line-height:1.3;color:#3D5470">Eine echte Tischkoralle braucht etwa 6 Monate, bis sie ins Meer darf.</span></div>
+ <div id="coneTag" style="position:absolute;left:228px;top:388px;background:#FFD84D;border-radius:14px;padding:5px 10px;font-weight:800;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:4">CoralCone</div>
+ <div class="care">
+  <button data-care="licht" style="background:rgba(255,216,77,.95)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Licht</button>
+  <button data-care="strom" style="background:rgba(127,224,238,.95)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round"><path d="M3 8c3-2 5 2 8 0s5-2 8 0M3 13c3-2 5 2 8 0s5-2 8 0M3 18c3-2 5 2 8 0s5-2 8 0"/></svg>Strömung</button>
+  <button data-care="putzen" style="background:rgba(255,255,255,.95)"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z"/><path d="M18 15l.9 2.1L21 18l-2.1.9L18 21l-.9-2.1L15 18l2.1-.9z"/></svg>Putzen</button>
+ </div>
+ <div class="plant"><div style="width:52px;height:52px;border-radius:16px;background:#FF8A5B;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V11M12 11c0-4 3-6 6-6 0 4-2 6-6 6zM12 14c0-3-2-5-5-5 0 3 2 5 5 5z"/></svg></div>
+  <div style="display:flex;flex-direction:column;flex:1"><span class="baloo" style="font-size:19px;line-height:1.1">Eine echte Koralle pflanzen?</span><span style="font-weight:700;font-size:13px;color:#DCEBF4">Mit Ocean Pure in Indonesien</span></div>
+  <button data-act="parents" style="height:48px;padding:0 12px;border-radius:24px;border:2px solid #fff;background:transparent;color:#fff;display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Eltern</button></div>
+</section>
+
+<nav class="tabs" id="tabs">
+ <button data-tab="map" class="act"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3z"/><path d="M9 3v15M15 6v15"/></svg>Karte</button>
+ <button data-tab="album"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Album</button>
+ <button data-tab="station"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M10 21v-6h4v6"/></svg>Station</button>
+</nav>
+
+
+<section id="mg"><div class="mgtop"><b id="mgNum"></b><span id="mgTxt"></span><div class="meter"><i id="mgBar"></i></div></div><div id="mgLayer"></div><canvas id="bowl"></canvas><div class="flash" id="flash"></div><div class="photos" id="photos"></div><div class="mgctl" id="mgCtl"></div></section>
+<section id="arui"><div class="mgtop" style="position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;background:rgba(11,31,58,.82);border-radius:22px;padding:12px 14px;color:#fff;display:flex;flex-direction:column;gap:6px"><b style="font-weight:800;font-size:12px;letter-spacing:1.5px;color:#FFB08F">AR · RIFF IN DEINEM ZIMMER</b><span id="arTxt" style="font-weight:800;font-size:16px">Beweg dein Handy und such die Tiere um dich herum!</span></div><div class="vf" id="arVf"></div><div class="flash" id="arFlash"></div><div class="mgctl" id="arCtl" style="bottom:110px"></div><button class="cta" id="arShot" style="position:absolute;left:50%;bottom:24px;transform:translateX(-50%);width:auto;padding:0 28px">Foto!</button><button class="round" id="arClose" aria-label="AR beenden" style="position:absolute;right:16px;bottom:28px;width:56px;height:56px;background:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></section>
+<section id="dlg"><div class="dbox"><div class="who"><div class="por" id="dPor"></div><b id="dWho"></b></div><p id="dTxt"></p><div class="fact" id="dFact"></div><div class="drow"><button class="speak" id="dSpeak" aria-label="Nochmal vorlesen" style="width:48px;height:48px;border-radius:24px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B1F3A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/></svg></button><button class="cta" id="dNext" style="width:auto;height:52px;padding:0 24px;font-size:20px">Weiter</button></div></div></section>
+<section id="chap"><div class="box"><span class="num" id="chNum"></span><span class="t" id="chT"></span><span class="g" id="chG"></span><button class="cta" id="chGo" style="width:auto;padding:0 34px">Los!</button></div></section>
+<section id="cert"><div class="box"><span style="font-weight:800;letter-spacing:3px;color:#8A6A00;font-size:13px">URKUNDE</span><span class="baloo" style="font-size:30px;line-height:1.05">Riff-Hüterin &amp; Riff-Hüter</span><img src="assets/wayan.png" alt="" style="height:120px"><span style="font-weight:700;color:#3D5470;line-height:1.35;max-width:280px">Du hast gelernt, wie Korallen, Algen, Clownfische, Mantas und Menschen zusammenhalten. Segara Kerthi: Wir ehren das Meer und halten es rein.</span><button class="cta" id="certOk" style="height:56px;font-size:20px">Weiter</button></div></section>
+<section id="title"><div class="logo"><i class="pdj">PRODIVE JUNIOR</i><b>Riffretter</b><span>MIT AYU &amp; WAYAN AUF BALI</span></div><img class="w" src="assets/wayan.png" alt="Wayan"><button class="cta" id="tPlay" style="max-width:320px">Spielen</button><button class="ghost" id="tSkip">Zur Karte</button></section>
+<div class="modal" id="parents"><div class="box" id="pbox"></div></div>
+<div class="toast" id="toast"><div class="thal" style="width:46px;height:46px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M4 14c2-4 5-6 8-6s6 2 8 6"/><circle cx="9" cy="12" r="1" fill="#fff"/><circle cx="15" cy="12" r="1" fill="#fff"/><path d="M9.5 16c1.5 1 3.5 1 5 0"/></svg></div><div class="bubble" id="toastTxt"></div></div>
+<div id="coach"><div class="spot" id="cspot"></div><div class="cbox" id="cbox"><p id="ctext"></p><div class="row"><div class="dots" id="cdots"></div><button class="cta" id="cnext" style="width:auto;height:52px;padding:0 22px;font-size:20px">Weiter</button></div></div></div>
+<div class="fade" id="fade"></div>
+<div id="bubbles"></div>
+<div id="loading"><span style="font-weight:800;font-size:13px;letter-spacing:3px;color:#BFF3FA">PRODIVE JUNIOR</span><span class="baloo" style="font-size:34px">Riffretter</span><div class="bar"><i id="lbar"></i></div><span style="font-weight:700;font-size:14px;color:#BFF3FA">Das Riff wird geladen …</span></div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
