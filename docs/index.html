@@ -15,127 +15,206 @@
 <meta property="og:image:height" content="630">
 <meta property="og:url" content="https://prodive.app/junior">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#004080">
-<link rel="icon" href="https://prodive.app/prodive_logo_beta.svg">
+<meta name="theme-color" content="#080F17">
+<link rel="icon" href="https://prodive.app/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F0F7FF;--card:#fff;--muted:#DBE6F0;--border:#CDD9E4;--primary:#0059B3;--deep:#004080;--sec:#00ACE6;--acc:#19B3E6;--fg:#0D1A26;--mfg:#52667A;--ok:#16A249}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased}
-a{color:var(--primary)}
-header{position:sticky;top:0;z-index:40;height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;padding:0 16px}
-header img{width:32px;height:32px}
-header b{font-weight:700;font-size:17px}
-header span{margin-left:auto;background:var(--muted);color:var(--primary);font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px}
-.wrap{max-width:720px;margin:0 auto;padding:0 16px 48px}
-.hero{background:linear-gradient(160deg,var(--deep),var(--primary) 55%,var(--sec));color:#fff;border-radius:0 0 28px 28px;margin:0 -16px;padding:28px 20px 0;overflow:hidden;position:relative}
-.hero .kick{display:inline-block;background:#ffffff26;font-size:12px;font-weight:700;letter-spacing:.08em;padding:5px 12px;border-radius:99px}
-.hero h1{font-size:40px;font-weight:800;line-height:1.05;margin:12px 0 8px;color:#fff}
-.hero p{color:#D6ECFF;font-size:16px;line-height:1.5;max-width:420px}
-.hero .kids{display:flex;justify-content:flex-end;gap:0;margin-top:-10px}
-.hero .kids img{height:150px;margin-left:-20px;filter:drop-shadow(0 6px 10px #0004)}
-.cta{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-top:-34px;position:relative;z-index:2;box-shadow:0 8px 24px #00408022}
-.btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--primary);color:#fff;font-weight:700;font-size:18px;text-decoration:none;padding:16px;border-radius:12px;transition:background .15s}
-.btn:hover{background:var(--deep)}
-.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;justify-content:center}
-.badge{background:var(--muted);color:var(--primary);font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px}
-.badge.ok{background:#DCFCE7;color:var(--ok)}
-.qr{display:none;margin-top:14px;text-align:center;font-size:13px;color:var(--mfg)}
-.qr img{width:150px;height:150px;display:block;margin:8px auto 0;border-radius:8px}
-h2{font-size:20px;font-weight:700;margin:32px 0 12px}
-p.lead{color:var(--mfg);font-size:15px;line-height:1.6}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
-.stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 10px;text-align:center}
-.stat b{display:block;font-size:26px;font-weight:700;color:var(--primary)}
-.stat small{font-size:11px;font-weight:600;color:var(--mfg);text-transform:uppercase;letter-spacing:.05em}
-.gal{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.gal figure{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.gal img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
-.gal figcaption{padding:10px 12px;font-size:13px;font-weight:600}
-.gal figcaption span{display:block;font-weight:400;color:var(--mfg);font-size:12px;margin-top:2px}
-.cast{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.cast div{background:#fff;border:1px solid var(--border);border-radius:14px;text-align:center;padding:12px 8px}
-.cast img{width:72px;height:72px;object-fit:contain}
-.cast b{display:block;font-size:14px;margin-top:4px}
-.cast span{font-size:12px;color:var(--mfg)}
-.steps{counter-reset:s;display:flex;flex-direction:column;gap:10px}
-.step{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px 14px 14px 56px;position:relative}
-.step:before{counter-increment:s;content:counter(s);position:absolute;left:14px;top:14px;width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
-.step>b{display:block;font-size:15px}
-.step span{font-size:14px;color:var(--mfg);line-height:1.5}
-.parents{background:#fff;border:1px solid var(--border);border-radius:14px;padding:4px 16px}
-.parents li{list-style:none;padding:12px 0;border-bottom:1px solid var(--muted);font-size:14px;line-height:1.5;color:var(--mfg)}
-.parents li:last-child{border:0}
-.parents li b{color:var(--fg)}
-.note{margin-top:14px;font-size:13px;color:var(--mfg);text-align:center}
-footer{text-align:center;font-size:13px;color:var(--mfg);padding:28px 0 calc(28px + env(safe-area-inset-bottom))}
-@media(min-width:640px){.hero{border-radius:0 0 32px 32px;padding:40px 36px 0}.hero h1{font-size:52px}.hero .kids img{height:200px}.gal{grid-template-columns:repeat(4,1fr)}.qr.show{display:block}}
+:root{--bg:#080F17;--card:#0E2130;--line:#1B3446;--fg:#DEE6ED;--mfg:#93A6B6;--cyan:#00A7CC;--cyan2:#67E8F9;--amber:#FFB31A;--coral:#FF7A59;--lime:#7CE38B;--head:Montserrat,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0}
+html{scroll-behavior:smooth}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;overflow-x:clip}
+a{color:var(--cyan2)}
+h1,h2,h3{font-family:var(--head);color:#fff;font-weight:800}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+nav{position:sticky;top:0;z-index:40;height:64px;background:#0A1520ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{height:64px;display:flex;align-items:center;gap:10px}
+nav img{height:22px;display:block}
+.jr{font-family:var(--head);font-weight:900;font-size:13px;letter-spacing:.14em;background:var(--amber);color:#0D1A26;padding:5px 8px 4px;transform:rotate(-4deg);display:inline-block}
+nav .dl-mini{margin-left:auto;background:var(--cyan);color:#0D1A26;font-weight:600;font-size:14px;text-decoration:none;padding:10px 16px}
+.hero{position:relative;overflow:hidden;background:radial-gradient(120% 90% at 80% 10%,#0C3A52 0%,#0A2234 40%,var(--bg) 75%)}
+.hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1fr;gap:10px;padding-top:44px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.22em;color:var(--cyan2);text-transform:uppercase}
+.hero h1{font-size:46px;line-height:1.02;margin:12px 0 14px;font-weight:900}
+.hero h1 span{color:var(--amber)}
+.hero p.lead{font-size:17px;line-height:1.55;color:#C9D6E1;max-width:520px}
+.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.btn{display:inline-flex;align-items:center;gap:10px;background:var(--cyan);color:#0D1A26;font-weight:700;font-size:17px;text-decoration:none;padding:16px 22px;box-shadow:6px 6px 0 var(--amber);transition:transform .12s,box-shadow .12s}
+.btn:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--amber)}
+.btn:active{transform:translate(4px,4px);box-shadow:2px 2px 0 var(--amber)}
+.btn2{display:inline-flex;align-items:center;color:#fff;font-weight:600;text-decoration:none;padding:16px 20px;border:1px solid #2A4558}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.chip{font-size:12px;font-weight:600;padding:6px 10px;background:#ffffff10;border:1px solid #ffffff1f;color:#DDE8F0}
+.chip b{color:var(--lime)}
+.kids{position:relative;height:250px;margin-top:18px}
+.kids img{position:absolute;bottom:0;height:240px;filter:drop-shadow(0 10px 18px #0008)}
+.kids .w{left:0;animation:bob 4s ease-in-out infinite}
+.kids .a{left:30%;animation:bob 4s ease-in-out -2s infinite}
+.kids .k{right:0;height:210px;animation:bob 5s ease-in-out -1s infinite}
+@keyframes bob{50%{transform:translateY(-8px)}}
+.wave{display:block;width:100%;height:46px;margin-top:-2px}
+.bubbles span{position:absolute;bottom:-20px;width:10px;height:10px;border:2px solid #67E8F955;border-radius:50%;animation:rise linear infinite;z-index:1}
+@keyframes rise{to{transform:translateY(-110vh) translateX(20px);opacity:0}}
+.qr{display:none;margin-top:18px;align-items:center;gap:14px;font-size:13px;color:var(--mfg)}
+.qr img{width:96px;height:96px;background:#fff;padding:6px}
+section{padding:46px 0}
+h2{font-size:30px;line-height:1.1;margin:8px 0 12px}
+p.sub{color:var(--mfg);font-size:16px;line-height:1.6;max-width:640px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px}
+.stat{background:var(--card);border:1px solid var(--line);padding:16px 12px;border-top:4px solid var(--cyan)}
+.stat:nth-child(2){border-top-color:var(--amber)}.stat:nth-child(3){border-top-color:var(--coral)}
+.stat b{display:block;font-family:var(--head);font-size:30px;color:#fff}
+.stat small{font-size:11px;font-weight:600;color:var(--mfg);text-transform:uppercase;letter-spacing:.08em}
+.gal{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}
+.tile{position:relative;aspect-ratio:3/4;overflow:hidden;background:var(--card)}
+.tile img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.tile:hover img{transform:scale(1.05)}
+.tile div{position:absolute;inset:auto 0 0 0;padding:40px 12px 12px;background:linear-gradient(transparent,#080F17ee)}
+.tile b{display:block;font-family:var(--head);font-size:16px;color:#fff}
+.tile span{font-size:13px;color:#C9D6E1}
+.tile i{position:absolute;top:10px;left:10px;font-style:normal;font-size:11px;font-weight:800;letter-spacing:.1em;background:var(--amber);color:#0D1A26;padding:4px 7px}
+.cast{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}
+.who{background:var(--card);border:1px solid var(--line);text-align:center;padding:16px 8px 14px}
+.who img{width:84px;height:84px;object-fit:contain}
+.who b{display:block;font-family:var(--head);color:#fff;margin-top:6px}
+.who span{font-size:12px;color:var(--mfg)}
+.steps{display:grid;gap:10px;margin-top:22px;counter-reset:s}
+.step{position:relative;background:var(--card);border:1px solid var(--line);padding:16px 16px 16px 70px}
+.step:before{counter-increment:s;content:counter(s);position:absolute;left:16px;top:14px;width:38px;height:38px;background:var(--amber);color:#0D1A26;font-family:var(--head);font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center}
+.step>b{display:block;color:#fff;font-size:16px;margin-bottom:2px}
+.step span{color:var(--mfg);font-size:14px;line-height:1.5}
+.parents{display:grid;gap:10px;margin-top:22px}
+.par{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--lime);padding:14px 16px;font-size:14px;line-height:1.5;color:var(--mfg)}
+.par b{color:#fff}
+.final{text-align:center;background:linear-gradient(180deg,var(--bg),#0A2B3D)}
+.final h2{font-size:34px}
+.final .ctas{justify-content:center}
+footer{border-top:1px solid var(--line);padding:24px 0 calc(24px + env(safe-area-inset-bottom));font-size:13px;color:var(--mfg)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+footer img{height:16px;opacity:.85;display:block}
+@media(min-width:760px){
+ .hero .wrap{grid-template-columns:1.1fr .9fr;align-items:end;padding-top:70px}
+ .hero h1{font-size:64px}
+ .kids{height:440px}.kids img{height:420px}.kids .k{height:340px}
+ .gal{grid-template-columns:repeat(4,1fr)}
+ .steps{grid-template-columns:repeat(4,1fr)}
+ .step{padding:70px 16px 16px}.step:before{top:16px}
+ .parents{grid-template-columns:repeat(2,1fr)}
+ h2{font-size:38px}
+ .qr.show{display:flex}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
-<header><img src="https://prodive.app/prodive_logo_beta.svg" alt="ProDive"><b>ProDive</b><span>Junior Corner</span></header>
-<div class="wrap">
-  <section class="hero">
-    <span class="kick">PRODIVE JUNIOR</span>
-    <h1>Riffretter</h1>
-    <p>Das Tauchabenteuer für Kinder. Mit Ayu &amp; Wayan das Meer von Bali retten: Müll sammeln, Korallen pflanzen, Mantas entdecken.</p>
-    <div class="kids"><img src="wayan.png" alt="Wayan"><img src="ayu.png" alt="Ayu"></div>
-  </section>
+<nav><div class="wrap">
+  <a href="https://prodive.app"><img src="prodive_logo.svg" alt="ProDive"></a><span class="jr">JUNIOR</span>
+  <a class="dl-mini" href="#laden">Gratis laden</a>
+</div></nav>
 
-  <div class="cta">
-    <a class="btn" id="dl" href="https://github.com/mtmatefi/prodive-junior/releases/latest/download/ProDive-Junior.apk">⬇ Gratis für Android laden</a>
-    <div class="meta">
-      <span class="badge" id="ver">Neueste Version</span>
-      <span class="badge ok">✓ Ohne Werbung</span>
-      <span class="badge ok">✓ Ohne Konto</span>
-      <span class="badge">5–10 Jahre</span>
+<header class="hero">
+  <div class="bubbles" aria-hidden="true">
+    <span style="left:8%;animation-duration:9s"></span><span style="left:22%;width:6px;height:6px;animation-duration:7s;animation-delay:-3s"></span><span style="left:48%;width:14px;height:14px;animation-duration:11s;animation-delay:-5s"></span><span style="left:70%;animation-duration:8s;animation-delay:-2s"></span><span style="left:88%;width:7px;height:7px;animation-duration:10s;animation-delay:-6s"></span>
+  </div>
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">ProDive Junior · Für Kinder von 5–10</div>
+      <h1>Werde<br><span>Riffretter!</span></h1>
+      <p class="lead">Tauche mit Ayu &amp; Wayan in das Meer von Bali. Sammle Müll, pflanze Korallen und Mangroven, fotografiere Nemo und triff riesige Mantas.</p>
+      <div class="ctas" id="laden">
+        <a class="btn" href="https://github.com/mtmatefi/prodive-junior/releases/latest/download/ProDive-Junior.apk">⬇ Gratis für Android</a>
+        <a class="btn2" href="#so-gehts">So geht's</a>
+      </div>
+      <div class="chips">
+        <span class="chip" id="ver">Neueste Version</span>
+        <span class="chip"><b>✓</b> Ohne Werbung</span>
+        <span class="chip"><b>✓</b> Ohne Konto</span>
+        <span class="chip">DE · EN · ID</span>
+      </div>
+      <div class="qr" id="qr"><img alt="QR-Code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=https%3A%2F%2Fprodive.app%2Fjunior"><span>Am Computer?<br>Mit dem Handy scannen.</span></div>
     </div>
-    <div class="qr" id="qr">Am Computer? Mit dem Handy scannen:<img alt="QR-Code" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=https%3A%2F%2Fprodive.app%2Fjunior"></div>
+    <div class="kids" aria-hidden="true">
+      <img class="w" src="wayan.png" alt=""><img class="a" src="ayu.png" alt=""><img class="k" src="kakek.png" alt="">
+    </div>
   </div>
+  <svg class="wave" viewBox="0 0 1440 46" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20 C 240 46 480 0 720 20 S 1200 40 1440 16 V46 H0Z" fill="#080F17"/></svg>
+</header>
 
-  <h2>Worum geht es?</h2>
-  <p class="lead">Kakek, der alte Fischer, erzählt von früher: Das Riff vor dem Dorf war voller Leben. Heute liegt dort Müll. Ayu und Wayan wollen das ändern. Kinder tauchen in echten 360°-Welten, lernen Meerestiere kennen und retten Schritt für Schritt ihr Riff. Jedes Wort wird vorgelesen und leuchtet mit, so üben Kinder ganz nebenbei lesen.</p>
-  <div class="stats">
-    <div class="stat"><b>360°</b><small>Tauchwelten</small></div>
-    <div class="stat"><b>3</b><small>Sprachen</small></div>
-    <div class="stat"><b>14</b><small>Mini-Spiele</small></div>
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Das Abenteuer</div>
+    <h2>Das Riff braucht dich.</h2>
+    <p class="sub">Kakek, der alte Fischer, erzählt von früher: Das Riff vor dem Dorf war voller Leben. Heute liegt dort Müll. Kinder tauchen in echten 360°-Welten, lernen Meerestiere kennen und retten Schritt für Schritt ihr Riff. Jedes Wort wird vorgelesen und leuchtet mit, so üben Kinder ganz nebenbei lesen.</p>
+    <div class="stats">
+      <div class="stat"><b>360°</b><small>Tauchwelten</small></div>
+      <div class="stat"><b>14</b><small>Mini-Spiele</small></div>
+      <div class="stat"><b>3</b><small>Sprachen</small></div>
+    </div>
   </div>
+</section>
 
-  <h2>Das erwartet dein Kind</h2>
-  <div class="gal">
-    <figure><img src="s2.jpg" alt="Strand"><figcaption>Strand putzen<span>Plastik sammeln und richtig trennen</span></figcaption></figure>
-    <figure><img src="s4.jpg" alt="Anemone"><figcaption>Nemo fotografieren<span>Unterwasser-Fotosafari</span></figcaption></figure>
-    <figure><img src="s3.jpg" alt="Mangroven"><figcaption>Mangroven pflanzen<span>Warum Wurzeln das Meer schützen</span></figcaption></figure>
-    <figure><img src="s1.jpg" alt="Manta"><figcaption>Mantas treffen<span>Frei tauchen am Riff</span></figcaption></figure>
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow">Missionen</div>
+    <h2>Das erwartet dich</h2>
+    <div class="gal">
+      <div class="tile"><img src="s2.jpg" alt="" loading="lazy"><i>MISSION 1</i><div><b>Strand putzen</b><span>Plastik sammeln und trennen</span></div></div>
+      <div class="tile"><img src="s4.jpg" alt="" loading="lazy"><i>MISSION 2</i><div><b>Nemo fotografieren</b><span>Unterwasser-Fotosafari</span></div></div>
+      <div class="tile"><img src="s3.jpg" alt="" loading="lazy"><i>MISSION 3</i><div><b>Mangroven pflanzen</b><span>Wurzeln schützen das Meer</span></div></div>
+      <div class="tile"><img src="s1.jpg" alt="" loading="lazy"><i>MISSION 4</i><div><b>Mantas treffen</b><span>Frei tauchen am Riff</span></div></div>
+    </div>
   </div>
+</section>
 
-  <h2>Die Figuren</h2>
-  <div class="cast">
-    <div><img src="ayu.png" alt=""><b>Ayu</b><span>mutige Taucherin</span></div>
-    <div><img src="wayan.png" alt=""><b>Wayan</b><span>neugieriger Entdecker</span></div>
-    <div><img src="kakek.png" alt=""><b>Kakek</b><span>weiser Fischer</span></div>
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow">Deine Crew</div>
+    <h2>Die Figuren</h2>
+    <div class="cast">
+      <div class="who"><img src="face_ayu.png" alt=""><b>Ayu</b><span>mutige Taucherin</span></div>
+      <div class="who"><img src="face_wayan.png" alt=""><b>Wayan</b><span>neugieriger Entdecker</span></div>
+      <div class="who"><img src="face_kakek.png" alt=""><b>Kakek</b><span>weiser Fischer</span></div>
+    </div>
   </div>
+</section>
 
-  <h2>So installierst du es</h2>
-  <div class="steps">
-    <div class="step"><b>Download starten</b><span>Auf dem Android-Handy oder -Tablet auf „Gratis für Android laden“ tippen.</span></div>
-    <div class="step"><b>Datei öffnen</b><span>Wenn der Download fertig ist, auf die Datei <i>ProDive-Junior.apk</i> tippen.</span></div>
-    <div class="step"><b>Installation erlauben</b><span>Fragt das Handy nach „Unbekannte Apps installieren“: für den Browser <b>Zulassen</b> wählen und zurück.</span></div>
-    <div class="step"><b>Abtauchen!</b><span>Auf <b>Installieren</b> tippen, dann öffnen. Neue Versionen meldet die App selbst.</span></div>
+<section id="so-gehts" style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow">Installieren</div>
+    <h2>In 4 Schritten abtauchen</h2>
+    <div class="steps">
+      <div class="step"><b>Laden</b><span>Auf dem Android-Handy oder -Tablet auf „Gratis für Android“ tippen.</span></div>
+      <div class="step"><b>Öffnen</b><span>Wenn der Download fertig ist, die Datei <i>ProDive-Junior.apk</i> antippen.</span></div>
+      <div class="step"><b>Erlauben</b><span>Fragt das Handy nach „Unbekannte Apps“: für den Browser „Zulassen“ wählen.</span></div>
+      <div class="step"><b>Abtauchen!</b><span>„Installieren“ tippen und los. Neue Versionen meldet die App selbst.</span></div>
+    </div>
   </div>
+</section>
 
-  <h2>Für Eltern</h2>
-  <ul class="parents">
-    <li><b>Sicher:</b> keine Werbung, keine In-App-Käufe, kein Chat, kein Konto. Die Bestenliste zeigt nur Fantasie-Spitznamen, keine echten Namen.</li>
-    <li><b>Sprachen:</b> Deutsch, English und Bahasa Indonesia, jede Figur mit eigener Stimme.</li>
-    <li><b>Geräte:</b> Android-Handys und -Tablets. Am besten mit Bewegungssensor zum Umschauen, Wischen geht auch.</li>
-    <li><b>Updates:</b> direkt in der App, ohne App Store. Einstellungen → „Nach Update suchen“.</li>
-    <li><b>iPhone / iPad:</b> noch nicht verfügbar.</li>
-  </ul>
-  <p class="note">Ein Projekt von ProDive und Ocean Pure Solutions für saubere Meere.</p>
-</div>
-<footer>© 2026 <a href="https://prodive.app">ProDive</a> · Digitales Tauchabenteuer</footer>
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="eyebrow">Für Eltern</div>
+    <h2>Sicher und ohne Haken</h2>
+    <div class="parents">
+      <div class="par"><b>Sicher:</b> keine Werbung, keine In-App-Käufe, kein Chat, kein Konto. Die Bestenliste zeigt nur Fantasie-Spitznamen.</div>
+      <div class="par"><b>Lesen lernen:</b> Jede Figur spricht mit eigener Stimme, jedes Wort leuchtet beim Vorlesen mit.</div>
+      <div class="par"><b>Geräte:</b> Android-Handys und -Tablets. Umschauen mit dem Bewegungssensor, Wischen geht auch.</div>
+      <div class="par"><b>Updates:</b> direkt in der App, ohne App Store. iPhone/iPad: noch nicht verfügbar.</div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <span class="jr">JUNIOR</span>
+    <h2 style="margin-top:14px">Bereit zum Abtauchen?</h2>
+    <p class="sub" style="margin:0 auto">Ein Projekt von ProDive und Ocean Pure Solutions für saubere Meere.</p>
+    <div class="ctas"><a class="btn" href="https://github.com/mtmatefi/prodive-junior/releases/latest/download/ProDive-Junior.apk">⬇ Gratis für Android</a></div>
+  </div>
+</section>
+
+<footer><div class="wrap"><a href="https://prodive.app"><img src="prodive_logo.svg" alt="ProDive"></a><span>© 2026 ProDive · Digitales Tauchabenteuer</span></div></footer>
+
 <script>
 fetch('https://raw.githubusercontent.com/mtmatefi/prodive-junior/dist/latest.json').then(r=>r.json()).then(j=>{document.getElementById('ver').textContent='Version '+j.versionName}).catch(()=>{});
 if(!/Android/i.test(navigator.userAgent)&&matchMedia('(pointer:fine)').matches)document.getElementById('qr').classList.add('show');
