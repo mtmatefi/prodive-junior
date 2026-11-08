@@ -12,9 +12,18 @@ const canvas = $('#gl');
 const TAN = Math.tan(THREE.MathUtils.degToRad(20)); // fov 40
 
 // ---------- renderer ----------
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' }); renderer.setClearColor(0x000000, 0);
+// Schwache Geräte (z. B. Galaxy Tab Active 2, Mali-T830) vor dem Start erkennen: dann ohne Kantenglättung,
+// kleinere Texturen, einfacherer Shader, feste 30 fps und dynamische Auflösung.
+const LITE = (() => { try { const q = new URLSearchParams(location.search).get('lite'); if (q != null) return q !== '0'; const ls = localStorage.getItem('seaju_lite'); if (ls != null) return ls === '1';
+  if (navigator.deviceMemory && navigator.deviceMemory <= 3) return true; if (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) return true;
+  const av = /Android (\d+)/.exec(navigator.userAgent); if (av && +av[1] <= 9) return true;
+  const g = document.createElement('canvas').getContext('webgl'); const ext = g && g.getExtension('WEBGL_debug_renderer_info'); const r = ext ? g.getParameter(ext.UNMASKED_RENDERER_WEBGL) : '';
+  return /Mali-(T|4|G51|G52|G31)|Adreno \(TM\) [345]\d\d|PowerVR|SGX|Vivante|Tegra/i.test(r); } catch (e) { return false; } })();
+window.__lite = LITE;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !LITE, alpha: true, powerPreference: 'high-performance', precision: LITE ? 'mediump' : 'highp' }); renderer.setClearColor(0x000000, 0);
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const PR_MAX = LITE ? Math.min(window.devicePixelRatio || 1, 1) : Math.min(window.devicePixelRatio || 1, 2);
+let PR = LITE ? Math.min(PR_MAX, .8) : PR_MAX; renderer.setPixelRatio(PR);
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
 let W = 390, H = 844, aspect = W / H;
 
@@ -25,7 +34,8 @@ const tex = {};
 let loaded = 0;
 await Promise.all(files.map((f) => new Promise((res) => {
   loader.load('assets/' + f, (t) => {
-    t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
+    if (LITE && t.image && t.image.width > 2048) { const k = 2048 / t.image.width, cv = document.createElement('canvas'); cv.width = 2048; cv.height = Math.round(t.image.height * k); cv.getContext('2d').drawImage(t.image, 0, 0, cv.width, cv.height); t.image = cv; }
+    t.colorSpace = THREE.NoColorSpace; t.anisotropy = LITE ? 1 : 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter;
     tex[f.split('.')[0]] = t; loaded++; $('#lbar').style.width = (loaded / files.length * 100) + '%'; res();
   }, undefined, () => { loaded++; res(); });
 })));
@@ -46,19 +56,19 @@ float cpat(vec2 p){ float c=0.; vec2 q=p;
     float v=abs(sin(q.x)+sin(q.y))*0.5; c+=1./(1.+60.*v*v); }
   return c/3.; }
 void main(){ vec2 uv=vUv;
-  vec3 base=texture2D(map,uv).rgb;
+  if (wobble + swayA > 0.) { vec3 base=texture2D(map,uv).rgb;
   float bm = mix(1., smoothstep(0.02,0.12, base.b-base.r), blueOnly);
   float w = wobble*bm;
   uv.x += sin(uv.y*38.+time*1.2)*0.0016*w*(0.5+vD);
   uv.y += cos(uv.x*30.+time*0.9)*0.0011*w;
   float sr = 1.-smoothstep(0., swayR, distance(vUv*vec2(1.,1.78), swayC*vec2(1.,1.78)));
-  uv.x += sin(time*1.6+vUv.y*28.)*0.006*swayA*sr; uv.y += cos(time*1.3+vUv.x*22.)*0.003*swayA*sr;
+  uv.x += sin(time*1.6+vUv.y*28.)*0.006*swayA*sr; uv.y += cos(time*1.3+vUv.x*22.)*0.003*swayA*sr; }
   vec3 col=texture2D(map,uv).rgb; float lum=dot(col,vec3(.3,.59,.11));
   float m=smoothstep(.42,.85,lum)*smoothstep(.58,.12,vUv.y)*caustic;
-  col += vec3(.7,.95,1.)*cpat(vUv*vec2(9.,16.)*1.5)*m*.38;
-  float rev=0.; for(int i=0;i<4;i++){ vec4 p=patches[i]; rev=max(rev, p.w*(1.-smoothstep(p.z*.35,p.z,distance(vUv*vec2(1.,1.78),p.xy*vec2(1.,1.78))))); }
+  if (caustic > 0.) col += vec3(.7,.95,1.)*cpat(vUv*vec2(9.,16.)*1.5)*m*.38;
+  if (bleach > 0.) { float rev=0.; for(int i=0;i<4;i++){ vec4 p=patches[i]; rev=max(rev, p.w*(1.-smoothstep(p.z*.35,p.z,distance(vUv*vec2(1.,1.78),p.xy*vec2(1.,1.78))))); }
   float bm2=bleach*(1.-rev)*smoothstep(.12,.38,vD);
-  float l2=dot(col,vec3(.3,.59,.11)); col=mix(col, vec3(l2)*1.05+vec3(.2,.22,.24), bm2*.85);
+  float l2=dot(col,vec3(.3,.59,.11)); col=mix(col, vec3(l2)*1.05+vec3(.2,.22,.24), bm2*.85); }
   col*= 1.-night*.0;
   gl_FragColor=vec4(col,1.); }`;
 const spriteVS = `
@@ -100,10 +110,10 @@ varying float vA; void main(){ vec2 c=gl_PointCoord-.5; float d=length(c); if(d>
 
 // ---------- scene builder ----------
 function makePlate(name, D, opts = {}) {
-  const geo = new THREE.PlaneGeometry(9, 16, 128, 228);
+  const geo = LITE ? new THREE.PlaneGeometry(9, 16, 64, 114) : new THREE.PlaneGeometry(9, 16, 128, 228);
   const mat = new THREE.ShaderMaterial({
     uniforms: { map: { value: tex['bg_' + name] }, dmap: { value: tex['d_' + name] }, D: { value: D }, L0: { value: 20 }, c0: { value: new THREE.Vector2() },
-      time: { value: 0 }, caustic: { value: opts.caustic ?? 1 }, wobble: { value: opts.wobble ?? 1 }, blueOnly: { value: opts.blueOnly ?? 0 },
+      time: { value: 0 }, caustic: { value: LITE ? 0 : (opts.caustic ?? 1) }, wobble: { value: LITE ? 0 : (opts.wobble ?? 1) }, blueOnly: { value: opts.blueOnly ?? 0 },
       swayC: { value: new THREE.Vector2(...(opts.swayC || [0, 0])) }, swayR: { value: opts.swayR ?? .01 }, swayA: { value: opts.swayA ?? 0 }, bleach: { value: 0 }, night: { value: 0 }, patches: { value: [0,1,2,3].map(() => new THREE.Vector4(0, 0, .1, 0)) } },
     vertexShader: plateVS, fragmentShader: plateFS });
   return new THREE.Mesh(geo, mat);
@@ -331,7 +341,7 @@ $('#quest').addEventListener('click', (e) => { e.stopPropagation(); const q = cu
 
 // ---------- screens ----------
 function transition(fn) { $('#fade').classList.add('on'); bubbleBurst(); setTimeout(() => { fn(); setTimeout(() => $('#fade').classList.remove('on'), 80); }, 480); }
-function useScene(scene) { st.scene = scene; const o = S[scene]; o.sc.add(camera); raysMat.uniforms.strength.value = o.rays; }
+function useScene(scene) { st.scene = scene; const o = S[scene]; o.sc.add(camera); raysMat.uniforms.strength.value = o.rays; rays.visible = !LITE && o.rays > 0; }
 function show(screen, scene) {
   st.screen = screen; $$('.screen').forEach((s) => s.classList.toggle('on', s.id === screen));
   $('#tabs').style.display = ['map', 'album', 'station'].includes(screen) ? 'flex' : 'none';
@@ -530,7 +540,8 @@ function place(m, sc, u, v, d) { m.position.copy(toWorld(sc, u, v, d)); }
 function setFog(m) { const dist = camera.position.z - m.position.z; m.material.uniforms.fog.value = THREE.MathUtils.clamp((dist - 15) / 30, 0, .45); }
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now; clock += dt;
+  if (LITE && now - last < 31) { requestAnimationFrame(frame); return; } // feste 30 fps: gleichmässig statt ruckelig
+  const dt = Math.min(.1, (now - last) / 1000); last = now; clock += dt;
   const o = S[st.scene];
   const k = 1 - Math.exp(-dt * 2.0); cam.u += (cam.tu - cam.u) * k; cam.v += (cam.tv - cam.v) * k; cam.zoom += (cam.tz - cam.zoom) * k;
   if (!pd) { cam.dragX *= Math.exp(-dt * 1.2); cam.dragY *= Math.exp(-dt * 1.2); }
@@ -554,8 +565,14 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 // Leistung: misst die Bildrate; bleibt sie unter ~35 fps, wird die 3D-Auflösung gesenkt (alte Tablets)
-let _pfN = 0, _pfS = 0; function perfTick(dt) { if (st.lite) return; _pfN++; _pfS += dt; if (_pfN >= 120) { if (_pfS / _pfN > 1 / 35) { st.lite = true; renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), .75)); } _pfN = 0; _pfS = 0; } }
-try { if ((navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4)) { st.lite = true; renderer.setPixelRatio(Math.min(renderer.getPixelRatio(), 1)); } } catch (e) {}
+// Dynamische Auflösung: misst laufend; zu langsam -> 3D-Auflösung runter, viel Luft -> wieder hoch
+st.lite = LITE; let _pfN = 0, _pfS = 0, _pfMax = 0;
+function perfTick(dt) { if (st.freeze3D) return; _pfN++; _pfS += dt; _pfMax = Math.max(_pfMax, dt); if (_pfN < 90) return;
+  const avg = _pfS / _pfN, target = LITE ? 1 / 30 : 1 / 50; let np = PR;
+  if (avg > target * 1.25) np = Math.max(LITE ? .5 : .6, PR - .1); else if (avg < target * .9 && _pfMax < target * 1.6) np = Math.min(PR_MAX, PR + .05);
+  if (Math.abs(np - PR) > .01) { PR = np; renderer.setPixelRatio(PR); if (!LITE && avg > 1 / 35) st.lite = true; }
+  _pfN = 0; _pfS = 0; _pfMax = 0; }
+window.__perf = () => ({ lite: LITE, pr: PR });
 function freeze3D(on) { st.freeze3D = on; st.frozenDone = false; if (!on) canvas.style.transform = ''; }
 function animExplore() {
   const a = clock * .12; place(turtle, ex, .76 + Math.sin(a) * .05, .45 + Math.sin(a * 1.7) * .02, .62); turtle.position.y += Math.sin(clock * .9) * .08; turtle.rotation.z = Math.sin(a * 1.7) * .08; turtle.scale.x = Math.cos(a) > 0 ? -1 : 1; setFog(turtle);
@@ -619,7 +636,9 @@ window.addEventListener('devicemotion', (e) => { const g = e.accelerationIncludi
   if (sens.has && _gPrevG != null && sens.gsign === 0) { const dG = sens.gamma - _gPrevG, dA = ang - _gPrevA; if (Math.abs(dG) > .4 && Math.abs(dA) > .4) sens.gcorr += Math.sign(dG * dA); if (Math.abs(sens.gcorr) > 6) sens.gsign = Math.sign(sens.gcorr); }
   _gPrevG = sens.gamma; _gPrevA = ang; });
 function calib() { sens.base = { b: sens.beta, g: sens.gamma }; sens.fx = sens.fy = 0; sens.gbase = sens.gang; }
-function tiltX() { if (sens.has && sens.gsign && sens.gang != null) { if (sens.gbase == null) sens.gbase = sens.gang; return clamp(sens.gsign * (sens.gang - sens.gbase) / 22, -1, 1); } return tilt().x; }
+const _fTilt = OneEuro(1.5, .8); let _tiltT = performance.now();
+function tiltX() { const now = performance.now(), dt = Math.min(.1, (now - _tiltT) / 1000) || .016; _tiltT = now; return _fTilt(tiltXRaw(), dt); }
+function tiltXRaw() { if (sens.has && sens.gsign && sens.gang != null) { if (sens.gbase == null) sens.gbase = sens.gang; return clamp(sens.gsign * (sens.gang - sens.gbase) / 22, -1, 1); } return tilt().x; }
 // finger fallback: drag on mini-game layer acts like tilting
 let fstart = null, flast = null;
 const mgEl = $('#mg');
@@ -627,7 +646,9 @@ function fingerDown(e) { fstart = { x: e.clientX, y: e.clientY, fx: sens.fx, fy:
 function fingerMove(e) { if (!fstart) return; sens.fx = clamp(fstart.fx + (e.clientX - fstart.x) / 110, -1, 1); sens.fy = clamp(fstart.fy + (e.clientY - fstart.y) / 110, -1, 1); const t = performance.now(); const dt = Math.max(1, t - flast.t); sens.fspeed = Math.hypot(e.clientX - flast.x, e.clientY - flast.y) / dt * 1000; flast = { x: e.clientX, y: e.clientY, t }; }
 function fingerUp() { fstart = null; sens.fdown = false; sens.fspeed = 0; }
 mgEl.addEventListener('pointerdown', fingerDown); window.addEventListener('pointermove', fingerMove); window.addEventListener('pointerup', fingerUp);
-function tilt() { if (sens.has) { if (!sens.base) calib(); return { x: clamp((sens.gamma - sens.base.g) / 22, -1, 1), y: clamp((sens.beta - sens.base.b) / 22, -1, 1) }; } return { x: sens.fx, y: sens.fy }; }
+let _tfX = null, _tfY = null, _tfT = 0;
+function tilt() { if (sens.has) { if (!sens.base) calib(); if (!_tfX) { _tfX = OneEuro(1.5, .8); _tfY = OneEuro(1.5, .8); } const now = performance.now(), dt = Math.min(.1, (now - (_tfT || now - 16)) / 1000) || .016; _tfT = now;
+  return { x: _tfX(clamp((sens.gamma - sens.base.g) / 22, -1, 1), dt), y: _tfY(clamp((sens.beta - sens.base.b) / 22, -1, 1), dt) }; } return { x: sens.fx, y: sens.fy }; }
 function shake() { return sens.has && sens.motion ? sens.rate : sens.fspeed / 6; } // deg/s-ish
 const ctlTilt = () => sens.has ? 'Handy neigen' : 'Mit dem Finger ziehen';
 
@@ -779,7 +800,7 @@ function gameBowl() { return new Promise((res) => {
   // Tropfen-Partikeln und Spritzern. Feste Physik-Schritte nach echter Zeit: läuft auf langsamen Tablets gleich schnell.
   const prevPR = renderer.getPixelRatio();
   let done = false;
-  const end = (ok, delay) => { if (done) return; done = true; mgTick = null; camera.rotation.z = 0; freeze3D(false); renderer.setPixelRatio(st.lite ? Math.min(prevPR, .75) : prevPR); setTimeout(() => { mgClose(); res(ok); }, delay); };
+  const end = (ok, delay) => { if (done) return; done = true; mgTick = null; camera.rotation.z = 0; freeze3D(false); renderer.setPixelRatio(PR); setTimeout(() => { mgClose(); res(ok); }, delay); };
   window.__mgDone = () => end(true, 0);
   stage('boat', .5, .55, .92); setTimeout(() => { if (!done && !window.__noFreeze) freeze3D(true); }, 400); // Hintergrund steht still: nur noch die Schale wird gezeichnet
   const INTRO = T('Gleich kommen Wellen von der Seite. Neige das Handy zur Welle hin, dann bleibt die Schale gerade!');
@@ -1175,28 +1196,28 @@ void main(){ vec3 d = normalize(vDir);
   vec2 uv = vec2(u, 1. - v);
   float u2 = fract(u + .5); vec2 gx = vec2(dFdx(u), -dFdx(v)), gy = vec2(dFdy(u), -dFdy(v));
   float gx2 = dFdx(u2), gy2 = dFdy(u2); if (abs(gx2) < abs(gx.x)) gx.x = gx2; if (abs(gy2) < abs(gy.x)) gy.x = gy2;
-  vec3 base = textureGrad(map, uv, gx, gy).rgb;
+  if (wobble + sway > 0.) { vec3 base = textureGrad(map, uv, gx, gy).rgb;
   float blue = smoothstep(.02, .14, base.b - base.r) * step(.5, v);
   float green = smoothstep(.03, .12, base.g - max(base.r, base.b) * .92) * (1. - smoothstep(.42, .56, v));
   uv.x += (sin(v * 140. + time * 1.3) * .0009 + sin(u * 300. - time * 1.7) * .0005) * wobble * blue;
   uv.y += cos(u * 220. + time * 1.1) * .0012 * wobble * blue;
-  uv.x += sin(time * 1.4 + u * 90.) * .0016 * sway * green * (1. - v * 1.6);
+  uv.x += sin(time * 1.4 + u * 90.) * .0016 * sway * green * (1. - v * 1.6); }
   vec3 col = textureGrad(map, uv, gx, gy).rgb;
   float lum = dot(col, vec3(.3, .59, .11));
-  col += vec3(.7, .95, 1.) * cpat(vec2(u * 120., v * 40.)) * smoothstep(.42, .85, lum) * smoothstep(.55, .75, v) * caustic * .35;
-  float rev = 0.; for (int i = 0; i < 4; i++) { vec4 p = patches[i]; float du = abs(u - p.x); du = min(du, 1. - du); rev = max(rev, p.w * (1. - smoothstep(p.z * .35, p.z, length(vec2(du * 2.3, (1. - v) - p.y))))); }
+  if (caustic > 0.) col += vec3(.7, .95, 1.) * cpat(vec2(u * 120., v * 40.)) * smoothstep(.42, .85, lum) * smoothstep(.55, .75, v) * caustic * .35;
+  if (bleach > 0.) { float rev = 0.; for (int i = 0; i < 4; i++) { vec4 p = patches[i]; float du = abs(u - p.x); du = min(du, 1. - du); rev = max(rev, p.w * (1. - smoothstep(p.z * .35, p.z, length(vec2(du * 2.3, (1. - v) - p.y))))); }
   float bm2 = bleach * (1. - rev) * smoothstep(.5, .6, v);
-  col = mix(col, vec3(dot(col, vec3(.3, .59, .11))) * 1.05 + vec3(.2, .22, .24), bm2 * .85);
-  col = mix(col, col * vec3(.35, .45, .8), night);
+  col = mix(col, vec3(dot(col, vec3(.3, .59, .11))) * 1.05 + vec3(.2, .22, .24), bm2 * .85); }
+  if (night > 0.) col = mix(col, col * vec3(.35, .45, .8), night);
   gl_FragColor = vec4(col, 1.); }`;
 const PANO_R = 60;
 function scenePano(name, file, opts = {}) {
   const sc = new THREE.Scene();
   const t = tex[file]; t.wrapS = THREE.RepeatWrapping; t.needsUpdate = true;
   const mat = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false,
-    uniforms: { map: { value: t }, time: { value: 0 }, wobble: { value: opts.wobble ?? 1 }, sway: { value: opts.sway ?? 0 }, caustic: { value: opts.caustic ?? 0 }, bleach: { value: 0 }, night: { value: 0 }, band: { value: PBAND }, L0: { value: 20 }, patches: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, .1, 0)) } },
+    uniforms: { map: { value: t }, time: { value: 0 }, wobble: { value: LITE ? 0 : (opts.wobble ?? 1) }, sway: { value: LITE ? 0 : (opts.sway ?? 0) }, caustic: { value: opts.caustic ?? 0 }, bleach: { value: 0 }, night: { value: 0 }, band: { value: PBAND }, L0: { value: 20 }, patches: { value: [0, 1, 2, 3].map(() => new THREE.Vector4(0, 0, .1, 0)) } },
     vertexShader: panoVS, fragmentShader: panoFS });
-  const plate = new THREE.Mesh(new THREE.SphereGeometry(PANO_R, 96, 48), mat); plate.renderOrder = -10; sc.add(plate);
+  const plate = new THREE.Mesh(new THREE.SphereGeometry(PANO_R, LITE ? 64 : 96, LITE ? 32 : 48), mat); plate.renderOrder = -10; sc.add(plate);
   const o = { name, sc, plate, D: 1, pano: true, rays: opts.rays ?? 0, fogColor: opts.fogColor || [0.2, 0.6, 0.75], front: opts.front ?? .5 };
   S[name] = o; return o;
 }
@@ -1222,12 +1243,16 @@ window.addEventListener('deviceorientation', (e) => { if (e.beta == null) return
 setInterval(() => { window.__pv = { yaw: PV.yaw, t: PV.tYaw, drag: PV.dragYaw, lock: st.lookLock, sc: st.scene, z: PV.zoom }; }, 300);
 function panoRecenter() { PV.dev0 = PV.devYaw; PV.dev0p = PV.devPitch; PV.dragYaw = 0; PV.dragPitch = 0; }
 function panoView(u, v, zoom) { PV.base = (u - .5) * Math.PI * 2; PV.basePitch = (.5 - v) * PBAND; PV.tZoom = clamp(zoom || 1, .5, 3); panoRecenter(); }
+// One-Euro-Filter (Casiez et al.): glättet Sensorzittern stark, folgt schnellen Bewegungen trotzdem ohne Verzögerung
+function OneEuro(minCut = 1.2, beta = .4, dCut = 1) { let x = null, dx = 0; const a = (c, dt) => 1 / (1 + 1 / (2 * Math.PI * c * dt));
+  return (v, dt) => { if (x == null || !isFinite(v)) { x = v; dx = 0; return v; } const ndx = (v - x) / Math.max(dt, 1e-3); dx += a(dCut, dt) * (ndx - dx); const c = minCut + beta * Math.abs(dx); x += a(c, dt) * (v - x); return x; }; }
+const _fYaw = OneEuro(1.2, .5), _fPitch = OneEuro(1.2, .5);
 function panoCam(dt) {
   const gy = sens.has && PV.devYaw != null && !st.lookLock && !st.gyroOff;
   if (gy && PV.dev0 == null) panoRecenter();
-  const dYaw = gy ? (PV.devYaw - PV.dev0) : 0; const dPitch = gy ? (PV.devPitch - (PV.dev0p || 0)) : 0;
+  const dYaw = gy ? _fYaw(PV.devYaw - PV.dev0, dt) : 0; const dPitch = gy ? _fPitch(PV.devPitch - (PV.dev0p || 0), dt) : 0;
   if (!st.lookLock) { PV.tYaw = PV.base + dYaw + PV.dragYaw; const lim = Math.max(0, PBAND / 2 - camera.fov * Math.PI / 360 - .02); PV.tPitch = clamp(PV.basePitch + dPitch + PV.dragPitch, -lim, lim); PV.dragPitch = clamp(PV.dragPitch, -lim - PV.basePitch - dPitch, lim - PV.basePitch - dPitch); }
-  const k = 1 - Math.exp(-dt * 10); // smoothing: gentle, no jitter
+  const k = 1 - Math.exp(-dt * (gy ? 16 : 10)); // Sensor ist schon gefiltert: schneller folgen, kein Nachziehen
   let dyw = PV.tYaw - PV.yaw; PV.yaw += dyw * k; PV.pitch += (PV.tPitch - PV.pitch) * k; PV.zoom += (PV.tZoom - PV.zoom) * (1 - Math.exp(-dt * 8));
   camera.position.set(0, 0, 0); camera.rotation.set(PV.pitch, -PV.yaw, 0, 'YXZ');
   const fov = clamp(72 / PV.zoom, 24, 110); if (Math.abs(camera.fov - fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -1376,7 +1401,7 @@ function randWater() { for (let k = 0; k < 20; k++) { const p = [-.1 + Math.rand
 function randShore() { const i = Math.floor(Math.random() * (SHORE.length - 1)); const t = Math.random(); const a = SHORE[i], b = SHORE[i + 1]; return [a[0] + (b[0] - a[0]) * t + .005 + Math.random() * .03, a[1] + (b[1] - a[1]) * t]; }
 function glowFrame(dt) {
   if (!GLW.on || st.scene !== 'glow') { if (GLW.cv) GLW.c.clearRect(0, 0, GLW.cv.width, GLW.cv.height); return; }
-  const dpr = Math.min(2, window.devicePixelRatio || 1); if (GLW.cv.width !== Math.round(W * dpr)) { GLW.cv.width = Math.round(W * dpr); GLW.cv.height = Math.round(H * dpr); }
+  const dpr = LITE ? 1 : Math.min(2, window.devicePixelRatio || 1); if (GLW.cv.width !== Math.round(W * dpr)) { GLW.cv.width = Math.round(W * dpr); GLW.cv.height = Math.round(H * dpr); }
   if (GLW.auto > 0) { const k = GLW.auto * 110 * dt; for (let i = 0; i < k; i++) { const p = Math.random() < .6 ? randShore() : randWater(); glowUV(p[0], p[1], 1, 6); } }
   const c = GLW.c; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H); c.globalCompositeOperation = 'lighter';
   GLW.sp = GLW.sp.filter((s) => (s.a += dt) < s.l); if (GLW.sp.length > 900) GLW.sp.splice(0, GLW.sp.length - 900);
@@ -1711,9 +1736,9 @@ function gamePaddle() { return new Promise((res) => { window.__mgDone = () => { 
   mgTick = (dt) => { if (done) return; const t = tilt(); push *= Math.exp(-dt * 1.5); speed *= Math.exp(-dt * .9); stroke = Math.max(0, stroke - dt * 2); const wave = Math.sin(clock * 1.3) * .25 + Math.sin(clock * .7 + 1) * .15;
     bal = clamp(t.x + wave * .6 + push, -1, 1); knob.style.left = ((bal + 1) / 2 * 100) + '%'; camera.rotation.z = -bal * .18; camera.rotation.x = PV.pitch + Math.sin(clock * 1.7) * .02 - stroke * .03 + speed * .015;
     // the boat glides: the view pushes forward with every stroke (narrower field of view = closer to the temple)
-    PV.tZoom = 1 + dist * .9 + speed * .06; bday.plate.material.uniforms.wobble.value = 1.2 + speed * 2.5;
+    PV.tZoom = 1 + dist * .9 + speed * .06; bday.plate.material.uniforms.wobble.value = LITE ? 0 : 1.2 + speed * 2.5;
     if (Math.abs(bal) > .75 && (warn -= dt) < 0) { warn = 3; toast('Gerade halten!'); }
-    mgBar(dist); if (dist >= 1) { done = true; chime(); buzz(60); setTimeout(() => { camera.rotation.z = 0; st.lookLock = false; PV.tZoom = 1; bday.plate.material.uniforms.wobble.value = 1.2; mgClose(); res(); }, 700); } };
+    mgBar(dist); if (dist >= 1) { done = true; chime(); buzz(60); setTimeout(() => { camera.rotation.z = 0; st.lookLock = false; PV.tZoom = 1; bday.plate.material.uniforms.wobble.value = LITE ? 0 : 1.2; mgClose(); res(); }, 700); } };
 }); }
 
 // E) spawning: a quiet moment just to watch the coral babies rise
@@ -1958,7 +1983,7 @@ Object.assign(ID, { 'Wer spielt?': 'Siapa yang main?', 'Neues Kind': 'Anak baru'
 // ---- one farm only: the house tab opens the new coral farm (old station screen retired); land scenes do not wobble
 { const tb = document.querySelector('#tabs button[data-tab="station"]'); if (tb) { const nb = tb.cloneNode(true); tb.replaceWith(nb);
     nb.addEventListener('click', () => { audioInit(); const f = farmLoad(); if (!f.on) { f.on = true; farmSave(f); } transition(async () => { await openFarm(); show('map', 'map'); renderDots(); }); }); } }
-bs.plate.material.uniforms.wobble.value = 0; bs.plate.material.uniforms.sway.value = .25;
+bs.plate.material.uniforms.wobble.value = 0; bs.plate.material.uniforms.sway.value = LITE ? 0 : .25;
 ho.plate.material.uniforms.wobble.value = 0;
 
 
@@ -2254,7 +2279,7 @@ function offerAnim(where) { return new Promise((res) => { const im = new Image()
   requestAnimationFrame(() => requestAnimationFrame(() => { im.style.opacity = 1; im.style.transform = sea ? 'translate(-50%,-50%) scale(.45) translateY(-170px)' : 'translate(-50%,-50%) scale(.9) translateY(-120px)'; }));
   setTimeout(() => { im.style.transition = 'all .9s'; im.style.opacity = 0; }, 1800); setTimeout(() => { im.remove(); res(); }, 2500); }); }
 // ================= FREE DIVE IN 360°: four places on Bali, look around instead of choosing a depth =================
-await new Promise((r) => loader.load('assets/pano_kri.jpg', (t) => { t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; tex.pano_kri = t; r(); }, undefined, () => r()));
+await new Promise((r) => loader.load('assets/pano_kri.jpg', (t) => { if (LITE && t.image && t.image.width > 2048) { const cv = document.createElement('canvas'); cv.width = 2048; cv.height = Math.round(t.image.height * 2048 / t.image.width); cv.getContext('2d').drawImage(t.image, 0, 0, cv.width, cv.height); t.image = cv; } t.colorSpace = THREE.NoColorSpace; t.anisotropy = LITE ? 1 : 4; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; tex.pano_kri = t; r(); }, undefined, () => r()));
 if (tex.pano_kri) toPano(kr, 'pano_kri', { wobble: .5, caustic: .8, rays: .12 });
 { const P = { start: { plate: 'explore', name: 'Riff', depth: 5, view: [.5, .5, 1], l: null, r: 'anemone' },
     anemone: { plate: 'anemone', name: 'Anemone', depth: 3, view: [.5, .5, 1], l: 'start', r: 'manta' },
